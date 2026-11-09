@@ -1,0 +1,6 @@
+[package]
+name = "prior_share"
+edition = "2024"
+
+[addresses]
+prior_share = "0x0"
