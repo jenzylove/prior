@@ -52,7 +52,7 @@ Who hits it: anyone who applies for visas more than once, worst for applicants f
 | Payments | x402 or MPP endpoint on Sui mainnet: any AI agent pays a small USDC fee to build a pack from the user's file. One real mainnet payment |
 | Proof page | `/proof`: live list of memory writes (blob IDs, Sui tx), the payment, the grant and expiry, eval results |
 | Eval | Test histories with planted contradictions; catch rate published including misses |
-| MCP | The same file readable from Claude Code through Walrus Memory MCP, showing portability |
+| MCP | Prior MCP server (`mcp/server.mjs`): Claude Code, Codex or any MCP agent reads the same encrypted file with your delegate key. (The stock Walrus Memory MCP reads through the relayer, which cannot decrypt memories sealed on our side, so Prior ships its own.) |
 
 ## 4. How each judging criterion is met
 
