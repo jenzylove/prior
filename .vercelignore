@@ -1,0 +1,7 @@
+.next
+.next-api
+.next-ui
+node_modules
+.env*
+*.tsbuildinfo
+move/prior_share/build
