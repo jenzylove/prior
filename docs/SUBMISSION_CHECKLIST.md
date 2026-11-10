@@ -1,15 +1,15 @@
 # Submission checklist (ticked only from the live app)
 
-Deadline: Nov 10 2026, 17:00 UTC (18:00 WAT). Live: https://prior-pi.vercel.app
+Deadline: Nov 10 2026, 17:00 UTC (18:00 WAT). Live: https://prior.jdollar.site
 
 | Requirement | Status | Evidence |
 |---|---|---|
 | Walrus Memory integrated and writing on Mainnet | done | Relayer `https://relayer.memory.walrus.xyz` (mode production), account `0x3ffa0d1c…05aa`, Seal encrypted writes from Vercel (`/api/seal`, blob `gTWDbIWF…52A`) |
 | At least 10 memories on Mainnet | done | `/proof` reads 40+ memories; one file `file-testrun01` holds 12 |
 | Tatum RPC used for onchain data | done | All chain reads via `https://sui-mainnet.gateway.tatum.io/graphql`: account and delegates, grants, payments, proof feed |
-| Published blog post | not yet | Draft in prior-launch/blog-post.md, to publish on dev.to |
+| Published blog post | done | https://dev.to/jenzylove/prior-a-visa-agent-that-remembers-every-application-you-filed-59hl |
 | Working demo | done | https://prior-pi.vercel.app/app, consultant view decrypts in a browser on production |
-| Public GitHub repo | not yet | github.com/jenzylove/prior is private until submission |
+| Public GitHub repo | done | https://github.com/jenzylove/prior |
 | Demo video 2 to 3 min | not yet | |
 | Form: Tatum account ID | ready | 6af24d98059c9eaaf7a6e42b |
 | Form: SUI address | ready | 0xd245602619cb352fcce63fdb038815b96be6255cc946745326dd80a3adf3baf5 |
