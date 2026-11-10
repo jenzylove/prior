@@ -23,16 +23,15 @@ export function ThemeToggle() {
   return (
     <button
       onClick={flip}
-      className="label label-ink flex items-center gap-2 hover:text-[var(--ink)] cursor-pointer"
-      aria-label={mode === "dark" ? "Switch to paper" : "Switch to ink"}
-      title={mode === "dark" ? "Switch to paper" : "Switch to ink"}
+      className="w-8 h-8 rounded-full border border-[var(--rule-strong)] grid place-items-center cursor-pointer hover:border-[var(--fg)] transition-colors"
+      aria-label={mode === "dark" ? "Switch to light" : "Switch to dark"}
+      title={mode === "dark" ? "Switch to light" : "Switch to dark"}
     >
       <span
         aria-hidden
-        className="inline-block w-3.5 h-3.5 rounded-full border border-[var(--ink-2)]"
-        style={{ background: "linear-gradient(90deg, var(--ink) 50%, transparent 50%)" }}
+        className="block w-3 h-3 rounded-full"
+        style={{ background: "linear-gradient(90deg, var(--fg) 50%, transparent 50%)", border: "1px solid var(--fg)" }}
       />
-      <span className="hidden sm:inline">{mode === null ? "Theme" : mode === "dark" ? "Ink" : "Paper"}</span>
     </button>
   );
 }

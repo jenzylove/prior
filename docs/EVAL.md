@@ -1,6 +1,6 @@
 # Eval: contradiction finder
 
-Run `npx tsx scripts/eval.ts`. Deterministic, no network, no model calls. Generated 2026-11-10T03:00:06.831Z.
+Run `npx tsx scripts/eval.ts`. Deterministic, no network, no model calls. Generated 2026-11-10T08:33:09.316Z.
 
 **Planted contradictions caught: 13 of 13.** **False alarms on clean files: 0 of 7.**
 Safety check, refusals never answer deportation, overstay or offence questions: pass.

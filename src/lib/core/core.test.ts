@@ -20,6 +20,15 @@ describe('findContradictions', () => {
     expect(c[0].factIds).toEqual(['p1', 'h1']);
   });
 
+  it('flags a job date written as a past form answer, not a job record', () => {
+    const facts = [
+      f('h1', 'employment', { employer: 'Zenith Bank', start: '2020-01' }),
+      f('a1', 'application', { country: 'France', date: '2024-02-10', formQuestion: 'When did you start your current job?', answeredValue: 'March 2019' }, 'past_form', 'On your France form you wrote that you started at Zenith Bank in March 2019.'),
+    ];
+    const c = findContradictions(facts, [], NOW);
+    expect(c.some(x => x.id.startsWith('c_emp') && x.factIds.includes('a1') && x.factIds.includes('h1'))).toBe(true);
+  });
+
   it('flags a past "no refusals" answer given after a refusal', () => {
     const facts = [
       f('r1', 'refusal', { country: 'UK', date: '2023-04-02' }),

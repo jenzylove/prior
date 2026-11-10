@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
 import type { Fact } from "@/components/ui/types";
-import { Seal } from "@/components/ui/Stamp";
 import { useNow } from "@/components/ui/Countdown";
 import { walrusBlobUrl, short } from "@/components/ui/api";
 
@@ -22,7 +21,7 @@ export const KIND_LABEL: Record<string, string> = {
 
 export const isRed = (f: Fact) => f.kind === "refusal" || f.kind === "lesson";
 
-function dateLine(f: Fact) {
+export function dateLine(f: Fact) {
   const { start, end, date } = f.fields ?? {};
   if (date) return date;
   if (start && end) return `${start} to ${end}`;
@@ -33,9 +32,10 @@ function dateLine(f: Fact) {
 
 function Elapsed({ since }: { since: number }) {
   const now = useNow(1000);
-  return <span className="tabular-nums">{Math.max(0, Math.floor((now - since) / 1000))}s</span>;
+  return <span className="tnum">{Math.max(0, Math.floor((now - since) / 1000))}s</span>;
 }
 
+/** One fact. The dot on the left is its state: dim, breathing ice while sealing, solid once sealed, red for refusals and lessons. */
 export function FactRow({
   fact,
   index,
@@ -44,6 +44,7 @@ export function FactRow({
   focused,
   onRetry,
   delay = 0,
+  showIds,
 }: {
   fact: Fact;
   index: number;
@@ -52,6 +53,7 @@ export function FactRow({
   focused?: number;
   onRetry?: () => void;
   delay?: number;
+  showIds?: boolean;
 }) {
   const ref = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -62,66 +64,63 @@ export function FactRow({
   const red = isRed(fact);
   const sealing = seal?.state === "sealing";
   const failed = seal?.state === "error";
+  const sealed = !!fact.blobId;
+  const dotColor = red ? "var(--red)" : sealing ? "var(--ice)" : sealed ? "var(--fg)" : "var(--fg-3)";
   return (
     <li
       ref={ref}
       id={`fact-${fact.id}`}
-      className="slide-in relative isolate grid grid-cols-[34px_1fr] gap-x-3 py-3.5 border-b border-[var(--rule)]"
+      className="slide-in relative isolate grid grid-cols-[22px_1fr] gap-x-3 py-3 border-b border-[var(--rule)]"
       style={{ animationDelay: `${delay}ms` }}
     >
-      {focused ? <span key={focused} aria-hidden className="fact-hl absolute -inset-x-2 inset-y-0 -z-10" /> : null}
-      <span className="mono text-[11px] text-[var(--ink-3)] pt-1">F{index + 1}</span>
+      {focused ? <span key={focused} aria-hidden className="fact-hl absolute -inset-x-3 inset-y-0 -z-10 rounded-md" /> : null}
+      <span className="pt-[7px]">
+        <span
+          key={sealed ? "sealed" : sealing ? "sealing" : "idle"}
+          className={`block w-[9px] h-[9px] rounded-full ${sealing ? "pulse-ice" : ""} ${sealed && fresh ? "lock" : ""}`}
+          style={{ background: dotColor, boxShadow: sealed && !red ? "0 0 0 1px var(--bg), 0 0 0 2px var(--fg)" : undefined }}
+        />
+      </span>
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="label" style={red ? { color: "var(--red)" } : undefined}>
-            {KIND_LABEL[fact.kind] ?? fact.kind}
-          </span>
-          {dateLine(fact) && <span className="mono text-[11px] text-[var(--ink-3)]">{dateLine(fact)}</span>}
+          <span className="label" style={red ? { color: "var(--red)" } : undefined}>{KIND_LABEL[fact.kind] ?? fact.kind}</span>
+          {dateLine(fact) && <span className="mono text-[11px] text-[var(--fg-3)]">{dateLine(fact)}</span>}
+          <span className="mono text-[10.5px] text-[var(--fg-3)] ml-auto">F{index + 1}</span>
         </div>
-        <p className={`text-[16px] leading-snug mt-0.5 pr-16 ${sealing ? "scan" : ""}`}>{fact.text}</p>
+        <p className={`text-[15px] leading-snug mt-0.5 ${sealing ? "scan" : ""}`}>{fact.text}</p>
 
-        <div className="mt-1.5 min-h-[18px] mono text-[11px]">
-          {fact.blobId ? (
-            <span className="text-[var(--seal)]">
-              Sealed on Walrus ·{" "}
-              <a className="link-u break-id" href={walrusBlobUrl(fact.blobId)} target="_blank" rel="noreferrer" title={fact.blobId}>
-                {short(fact.blobId, 10, 6)}
-              </a>
-            </span>
+        <div className="mt-1 min-h-[16px] mono text-[11px]">
+          {sealed ? (
+            showIds ? (
+              <span className="text-[var(--fg-3)]">
+                Walrus blob{" "}
+                <a className="link-u break-id" href={walrusBlobUrl(fact.blobId!)} target="_blank" rel="noreferrer" title={fact.blobId}>
+                  {short(fact.blobId!, 10, 6)}
+                </a>
+              </span>
+            ) : (
+              <span className="text-[var(--fg-3)]">Sealed on Walrus</span>
+            )
           ) : sealing ? (
-            <span className="text-[var(--ink-2)]">
+            <span className="text-[var(--ice)]">
               Encrypting with Seal, writing to Walrus · <Elapsed since={seal.startedAt} />
             </span>
           ) : failed ? (
             <span className="text-[var(--red)]">
               Not sealed: {seal.error}{" "}
               {onRetry && (
-                <button className="link-u cursor-pointer ml-1" onClick={onRetry}>
-                  Try again
-                </button>
+                <button className="link-u cursor-pointer ml-1" onClick={onRetry}>Try again</button>
               )}
             </span>
           ) : (
-            <span className="text-[var(--ink-3)]">
+            <span className="text-[var(--fg-3)]">
               Not sealed yet{" "}
               {onRetry && (
-                <button className="link-u cursor-pointer ml-1" onClick={onRetry}>
-                  Seal now
-                </button>
+                <button className="link-u cursor-pointer ml-1" onClick={onRetry}>Seal now</button>
               )}
             </span>
           )}
         </div>
-      </div>
-      {/* the stamp */}
-      <div className="absolute right-0 top-2 pointer-events-none">
-        {fact.blobId ? (
-          <Seal size={58} animate={!!fresh} rot={-12 + ((index * 7) % 14)} center="P" />
-        ) : sealing ? (
-          <span className="block stamp-pending">
-            <Seal size={58} animate={false} rot={-8} center="P" />
-          </span>
-        ) : null}
       </div>
     </li>
   );

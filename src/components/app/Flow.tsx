@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Fact, Pack, Trip, FormId } from "@/components/ui/types";
 import { FORM_NAMES } from "@/components/ui/types";
 import { api, suiTxUrl, suiAccountUrl, short, walrusBlobUrl } from "@/components/ui/api";
-import { Seal, RedStamp } from "@/components/ui/Stamp";
 import { Countdown } from "@/components/ui/Countdown";
 import { FactRow, type SealState } from "./FactLedger";
+import { FileSphere } from "./FileSphere";
 import { PackView, useFactIndex } from "./PackView";
 import { PackDiff, diffPacks } from "./PackDiff";
 import { readHistoryFile } from "./readFile";
@@ -68,47 +68,105 @@ interface AgentBuy { receiptTx: string; verified: Verified; pack: Pack; payer?: 
 function ErrorLine({ msg }: { msg: string | null }) {
   if (!msg) return null;
   return (
-    <p role="alert" className="slide-in mt-4 mono text-[13px] text-[var(--red)] border-l-2 border-[var(--red)] pl-3 py-1 break-words">
+    <p role="alert" className="slide-in mt-4 text-[14px] text-[var(--red)] border-l-2 border-[var(--red)] pl-3 py-1 break-words">
       {msg}
     </p>
   );
 }
 
-function Busy({ children }: { children: React.ReactNode }) {
+function Busy({ children }: { children: ReactNode }) {
   return <span className="typing">{children}</span>;
 }
 
-function Step({
-  n,
-  id,
-  title,
-  lede,
-  locked,
-  lockNote,
-  className = "",
-  children,
-}: {
-  n: string;
-  id: string;
-  title: React.ReactNode;
-  lede?: React.ReactNode;
-  locked?: boolean;
-  lockNote?: string;
-  className?: string;
-  children?: React.ReactNode;
-}) {
+/** Raw ids live behind this. Closed by default, one tap to open. */
+function Details({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <section id={id} className={`min-w-0 scroll-mt-6 pt-14 first:pt-6 ${className}`}>
-      <div className="rule-strong mb-5" />
-      <div className="grid grid-cols-[56px_1fr] sm:grid-cols-[88px_1fr] gap-3 sm:gap-5">
-        <div className={`display text-[56px] sm:text-[84px] leading-[0.8] ${locked ? "text-[var(--rule-strong)]" : "text-[var(--ink-3)]"}`}>{n}</div>
-        <div className="min-w-0">
-          <h2 className={`display text-[36px] sm:text-[52px] ${locked ? "text-[var(--ink-3)]" : ""}`}>{title}</h2>
-          {lede && <div className="mt-2 text-[17px] text-[var(--ink-2)] max-w-[60ch]">{lede}</div>}
+    <details className="acc mt-5 group">
+      <summary className="label cursor-pointer inline-flex items-center gap-2 hover:text-[var(--fg)] transition-colors">
+        <span className="inline-block transition-transform group-open:rotate-90" aria-hidden>›</span>
+        {label}
+      </summary>
+      <div className="acc-body">
+        <div>
+          <dl className="mt-3 mono text-[12px] space-y-1.5 text-[var(--fg-2)]">{children}</dl>
         </div>
       </div>
-      <div className="mt-6 sm:ml-[108px]">
-        {locked ? <p className="fine italic">{lockNote}</p> : children}
+    </details>
+  );
+}
+function Row({ k, children }: { k: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 flex-wrap">
+      <dt className="text-[var(--fg-3)] w-[110px] shrink-0">{k}</dt>
+      <dd className="min-w-0 break-id">{children}</dd>
+    </div>
+  );
+}
+
+type StepStatus = "locked" | "todo" | "active" | "done";
+
+/** One step of the guided flow. Only the active step is open; done steps show a one line summary. */
+function Step({
+  n,
+  title,
+  status,
+  summary,
+  lockNote,
+  onOpen,
+  children,
+  red,
+}: {
+  n: number;
+  title: ReactNode;
+  status: StepStatus;
+  summary?: ReactNode;
+  lockNote?: string;
+  onOpen: () => void;
+  children?: ReactNode;
+  red?: boolean;
+}) {
+  const open = status === "active";
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (open && ref.current) {
+      const top = ref.current.getBoundingClientRect().top + window.scrollY - 24;
+      if (Math.abs(window.scrollY - top) > 120) window.scrollTo({ top, behavior: "smooth" });
+    }
+  }, [open]);
+  const dot =
+    status === "done" ? "var(--ice)" : status === "active" ? (red ? "var(--red)" : "var(--fg)") : status === "todo" ? "var(--fg-3)" : "var(--rule-strong)";
+  return (
+    <section ref={ref} id={`s${n}`} className="scroll-mt-6 border-b border-[var(--rule)]">
+      <button
+        type="button"
+        className="w-full text-left py-6 grid grid-cols-[32px_1fr_auto] gap-4 items-start cursor-pointer disabled:cursor-default"
+        disabled={status === "locked" || open}
+        onClick={onOpen}
+        aria-expanded={open}
+      >
+        <span className="pt-[9px]">
+          <span
+            className="block w-[14px] h-[14px] rounded-full transition-colors duration-500"
+            style={{ background: status === "done" ? "var(--ice)" : "transparent", border: `1.5px solid ${dot}`, boxShadow: open ? `0 0 0 4px ${red ? "var(--red-soft)" : "var(--ice-soft)"}` : undefined }}
+          />
+        </span>
+        <span className="min-w-0">
+          <span className="label block">Step {n}</span>
+          <span className={`display block text-[28px] sm:text-[38px] mt-1 transition-colors duration-500 ${status === "locked" ? "text-[var(--fg-3)]" : ""}`}>{title}</span>
+          {!open && (
+            <span className="block mt-2 text-[15px] text-[var(--fg-2)]">
+              {status === "locked" ? lockNote : summary}
+            </span>
+          )}
+        </span>
+        {!open && status !== "locked" && (
+          <span className="label pt-3 hidden sm:inline">{status === "done" ? "Open" : "Start"}</span>
+        )}
+      </button>
+      <div className="grid transition-[grid-template-rows] duration-700 ease-[cubic-bezier(.2,.8,.2,1)]" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
+        <div className="overflow-hidden">
+          <div className="pb-12 sm:pl-[48px]">{open && children}</div>
+        </div>
       </div>
     </section>
   );
@@ -125,6 +183,8 @@ export default function Flow() {
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
   const [pack, setPack] = useState<Pack | null>(null);
   const [trip, setTrip] = useState<Trip>({ form: "schengen", destination: "", purpose: "Tourism", start: "", end: "" });
+  const [active, setActive] = useState<number>(1);
+  const [showIds, setShowIds] = useState(false);
 
   useEffect(() => {
     let id = load<string>(K.ns);
@@ -133,10 +193,13 @@ export default function Flow() {
       save(K.ns, id);
     }
     setNs(id);
-    setFacts(load<Fact[]>(K.facts) ?? []);
-    setPack(load<Pack>(K.pack));
+    const f = load<Fact[]>(K.facts) ?? [];
+    const p = load<Pack>(K.pack);
+    setFacts(f);
+    setPack(p);
     const t = load<Trip>(K.trip);
     if (t) setTrip(t);
+    setActive(f.length === 0 ? 1 : 2);
     setReady(true);
   }, []);
 
@@ -370,385 +433,407 @@ export default function Flow() {
     setAgent(null);
     setWiped(null);
     setRestored(null);
+    setActive(1);
   }
 
-  /* ─────────────────────────── render ─────────────────────────── */
+  /* ─────────────────────────── derived status ─────────────────────────── */
 
-  const ledger = (
-    <aside className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 lg:row-span-6 min-w-0 pt-8 lg:pt-6">
-      <div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:-mr-2">
-        <div className="rule-double" />
-        <div className="flex items-start justify-between gap-3 pt-4">
-          <div>
-            <div className="label">The file</div>
-            <div className="display text-[34px] leading-none mt-1">Memory of record</div>
-          </div>
-          <Seal size={64} animate={false} rot={-10} center={String(sealed)} sub="SEALED" />
+  const hasFacts = facts.length > 0;
+  const st = (n: number, done: boolean, locked: boolean): StepStatus => (active === n ? "active" : locked ? "locked" : done ? "done" : "todo");
+  const s1 = st(1, hasFacts, false);
+  const s2 = st(2, !!pack, ready && !hasFacts);
+  const s3 = st(3, !!refusal, ready && !hasFacts);
+  const s4 = st(4, !!share, ready && !pack);
+  const s5 = st(5, restored !== null, ready && !hasFacts && wiped === null);
+  const s6 = st(6, !!agent, ready && !(pack || tripOk) );
+  const grantWord = grant ? (grant.revoked ? "revoked" : grant.live ? "live" : "expired") : null;
+  const progress = [hasFacts, !!pack, !!refusal, !!share, restored !== null].filter(Boolean).length;
+
+  /* ─────────────────────────── the file (aside) ─────────────────────────── */
+
+  const fileHead = (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <div className="label">Your file</div>
+        <div className="display text-[26px] mt-1 tnum">
+          {facts.length} {facts.length === 1 ? "fact" : "facts"}
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 mono text-[11.5px] text-[var(--ink-2)]">
-          <span>File <span className="text-[var(--ink)]">{ready ? ns : "…"}</span></span>
-          <span>{facts.length} facts</span>
-          <span className="text-[var(--seal)]">{sealed} on Walrus</span>
-          {sealingCount > 0 && <span className="tick">{sealingCount} sealing</span>}
+        <div className="mt-1 text-[13px] text-[var(--fg-2)]">
+          <span style={{ color: sealed ? "var(--ice)" : undefined }}>{sealed} sealed on Walrus</span>
+          {sealingCount > 0 && <span className="text-[var(--ice)] pulse-ice"> · {sealingCount} sealing</span>}
         </div>
-        <div className="rule mt-3" />
+      </div>
+      <FileSphere facts={facts} seals={seals} size={120} focusId={focus?.id} />
+    </div>
+  );
 
-        {facts.length === 0 ? (
-          <p className="fine italic py-6">
-            {wiped !== null
-              ? "Local index wiped. Nothing is on this device now. Restore it from Walrus in step 05."
-              : "Nothing on file yet. Step 01 adds your history; each fact appears here and is sealed on Walrus."}
-          </p>
-        ) : (
-          <ol>
-            {facts.map((f, i) => (
-              <FactRow
-                key={f.id}
-                fact={f}
-                index={i}
-                seal={seals[f.id]}
-                fresh={fresh.has(f.id)}
-                focused={focus?.id === f.id ? focus.n : undefined}
-                onRetry={() => void sealOne(f)}
-                delay={restored !== null ? i * 70 : 0}
-              />
-            ))}
-          </ol>
-        )}
+  const ledgerList = (
+    <>
+      {facts.length === 0 ? (
+        <p className="fine py-5">
+          {wiped !== null
+            ? "Local copy wiped. Nothing is on this device now. Restore it from Walrus in step 5."
+            : "Nothing on file yet. Your history becomes facts here, and each one is sealed on Walrus."}
+        </p>
+      ) : (
+        <ol>
+          {facts.map((f, i) => (
+            <FactRow
+              key={f.id}
+              fact={f}
+              index={i}
+              seal={seals[f.id]}
+              fresh={fresh.has(f.id)}
+              focused={focus?.id === f.id ? focus.n : undefined}
+              onRetry={() => void sealOne(f)}
+              delay={restored !== null ? i * 70 : 0}
+              showIds={showIds}
+            />
+          ))}
+        </ol>
+      )}
+      {unsealed.length > 0 && sealingCount === 0 && (
+        <button className="btn btn-ghost btn-sm mt-4" onClick={() => unsealed.forEach((f) => void sealOne(f))}>
+          Seal {unsealed.length} more on Walrus
+        </button>
+      )}
+      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 fine">
+        <button className="link-u cursor-pointer" onClick={() => setShowIds((v) => !v)}>
+          {showIds ? "Hide Walrus ids" : "Show Walrus ids"}
+        </button>
+        <button className="link-u cursor-pointer" onClick={newFile}>Open a new, empty file</button>
+      </div>
+      {showIds && (
+        <p className="mono text-[11px] text-[var(--fg-3)] mt-3 break-id">File id {ready ? ns : "…"}. Keep it private.</p>
+      )}
+    </>
+  );
 
-        {unsealed.length > 0 && sealingCount === 0 && (
-          <button className="btn btn-ghost btn-sm mt-4" onClick={() => unsealed.forEach((f) => void sealOne(f))}>
-            Seal {unsealed.length} more on Walrus
-          </button>
-        )}
-
-        {/* annex: agent buys */}
-        <div className="mt-10 border-t-[3px] border-double border-[var(--rule-strong)] pt-4">
-          <div className="label">Annex · For agents</div>
-          <h3 className="display text-[28px] leading-tight mt-1">Let an agent buy this pack</h3>
-          <p className="text-[15px] text-[var(--ink-2)] mt-2">
-            Prior&apos;s own demo agent calls the paid endpoint, pays in USDC on Sui over MPP, and gets a pack built from this
-            file. The payment is then read back from Sui through Tatum.
-          </p>
-          <button
-            className="btn btn-seal btn-sm mt-4"
-            disabled={agentBusy || !ready || !(pack || tripOk) || sealed === 0}
-            onClick={agentBuy}
-          >
-            {agentBusy ? <Busy>Agent paying</Busy> : "Run the agent purchase"}
-          </button>
-          {sealed === 0 && <p className="fine mt-2">Needs at least one sealed fact and a trip.</p>}
-          <ErrorLine msg={agentErr} />
-          {agent && (
-            <div className="slide-in mt-5 relative">
-              <div className="mono text-[12px] space-y-1.5">
-                <div>
-                  <span className="text-[var(--ink-3)]">Receipt </span>
-                  <a className="link-u break-id" href={suiTxUrl(agent.receiptTx)} target="_blank" rel="noreferrer">
-                    {short(agent.receiptTx, 10, 8)}
-                  </a>
-                </div>
-                {agent.payer && (
-                  <div>
-                    <span className="text-[var(--ink-3)]">Payer </span>
-                    <a className="link-u" href={suiAccountUrl(agent.payer)} target="_blank" rel="noreferrer">{short(agent.payer)}</a>
-                  </div>
-                )}
-                {agent.recipient && (
-                  <div>
-                    <span className="text-[var(--ink-3)]">Paid to </span>
-                    <a className="link-u" href={suiAccountUrl(agent.recipient)} target="_blank" rel="noreferrer">{short(agent.recipient)}</a>
-                  </div>
-                )}
-                <div>
-                  <span className="text-[var(--ink-3)]">Pack </span>
-                  {agent.pack?.answers?.length ?? 0} answers, {agent.pack?.checklist?.length ?? 0} documents
-                </div>
-              </div>
-              {agent.verified?.ok ? (
-                <div className="mt-4 flex items-center gap-3">
-                  <RedStamp tone="seal" rot={-4}>Paid</RedStamp>
-                  <span className="text-[15px]">
-                    Paid {agent.verified.amountUsdc ?? "0.05"} USDC on Sui, verified through Tatum.
-                  </span>
-                </div>
-              ) : (
-                <p className="mt-3 text-[14px] text-[var(--red)]">
-                  Tatum has not confirmed this payment yet{agent.verified?.reason ? `: ${agent.verified.reason}` : ""}. Check the receipt link.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-10 pb-4">
-          <button className="fine link-u cursor-pointer" onClick={newFile}>Open a new, empty file</button>
-        </div>
+  const aside = (
+    <aside className="hidden lg:block lg:col-start-2 lg:row-start-1 min-w-0">
+      <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto pr-2 -mr-2">
+        {fileHead}
+        <div className="rule mt-4" />
+        {ledgerList}
       </div>
     </aside>
   );
 
+  /* ─────────────────────────── render ─────────────────────────── */
+
   return (
-    <main className="mx-auto max-w-[1280px] px-4 sm:px-8 pb-10">
-      {/* page head */}
-      <div className="pt-8 sm:pt-12 grid gap-6 sm:grid-cols-[1fr_auto] items-end">
-        <div>
-          <div className="label">Your file · five steps</div>
-          <h1 className="display text-[52px] sm:text-[84px] mt-2">Start your file.</h1>
-          <p className="mt-3 text-[18px] text-[var(--ink-2)] max-w-[56ch]">
-            Tell Prior your history once. Every application after this one will agree with it.
-          </p>
-        </div>
-        <nav className="flex flex-wrap gap-x-4 gap-y-1 mono text-[11px] tracking-[0.12em] uppercase text-[var(--ink-3)]">
-          {[["s1", "History"], ["s2", "Trip"], ["s3", "Refusal"], ["s4", "Consultant"], ["s5", "Restore"]].map(([id, l], i) => (
-            <a key={id} href={`#${id}`} className="hover:text-[var(--ink)]">0{i + 1} {l}</a>
+    <main className="mx-auto max-w-[1200px] px-4 sm:px-8 pb-16">
+      <div className="pt-10 sm:pt-16 pb-6">
+        <div className="label">Your file · {progress} of 5 done</div>
+        <h1 className="display display-tight text-[44px] sm:text-[72px] mt-3">Tell Prior your history once.</h1>
+        <p className="mt-4 text-[17px] sm:text-[19px] text-[var(--fg-2)] max-w-[52ch]">
+          Every application after this one will agree with it. One step at a time; done steps fold up above.
+        </p>
+        <div className="mt-6 flex gap-1" aria-hidden>
+          {[hasFacts, !!pack, !!refusal, !!share, restored !== null].map((d, i) => (
+            <span key={i} className="h-[3px] flex-1 rounded-full transition-colors duration-700" style={{ background: d ? "var(--ice)" : active === i + 1 ? "var(--fg)" : "var(--rule-strong)" }} />
           ))}
-        </nav>
+        </div>
       </div>
 
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px] lg:gap-x-14">
-        {/* 01 */}
-        <Step
-          n="01"
-          id="s1"
-          className="order-1 lg:order-none lg:col-start-1"
-          title="Your history"
-          lede="Write it the way you would tell a friend: where you worked and when, where you lived, every trip abroad, every visa you applied for and what happened."
-        >
-          <label htmlFor="history" className="label block mb-2">In your own words</label>
-          <textarea
-            id="history"
-            className="sheet"
-            rows={9}
-            value={history}
-            onChange={(e) => setHistory(e.target.value)}
-            placeholder={
-              "I have worked at Lagos Freight Ltd as an accounts officer since March 2018. Before that I was at Zenith Bank from June 2015 to February 2018.\nI live at 14 Adeola Street, Ikeja, Lagos.\nI went to London in August 2019 for two weeks for my cousin's wedding.\nIn 2023 I applied for a Schengen visa to France and was refused."
-            }
-          />
-          <div className="mt-5 flex flex-wrap items-center gap-4">
-            <button className="btn" disabled={!ready || intakeBusy || history.trim().length < 20} onClick={buildFile}>
-              {intakeBusy ? <Busy>Reading your history</Busy> : "Build my file"}
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
-              Add a text file or PDF
-            </button>
-            <input ref={fileRef} type="file" accept=".txt,.md,.text,.pdf,text/plain,application/pdf" className="hidden" onChange={onFile} />
-          </div>
-          {fileNote && <p className="fine mt-3">{fileNote}</p>}
-          <ErrorLine msg={intakeErr} />
-          {lastIntake !== null && !intakeErr && (
-            <p className="slide-in mt-5 text-[16px]">
-              <span className="display text-[28px] text-[var(--seal)] mr-2">{lastIntake}</span>
-              facts read from your history.{" "}
-              {sealingCount > 0 ? (
-                <span className="text-[var(--ink-2)]">Each one is being encrypted with Seal and written to Walrus mainnet, about twenty seconds each, all at once. Watch the file.</span>
-              ) : (
-                <span className="text-[var(--ink-2)]">See them in the file.</span>
-              )}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px] lg:gap-x-16">
+        <div className="lg:col-start-1 rule-strong">
+          {/* 1 */}
+          <Step
+            n={1}
+            title="Your history"
+            status={s1}
+            summary={hasFacts ? <>{facts.length} facts on file, <span style={{ color: "var(--ice)" }}>{sealed} sealed on Walrus</span>{sealingCount > 0 ? `, ${sealingCount} sealing` : ""}.</> : "Paste your history. It becomes sealed facts."}
+            onOpen={() => setActive(1)}
+          >
+            <p className="lede max-w-[58ch]">
+              Write it the way you would tell a friend: where you worked and when, where you lived, every trip abroad, every
+              visa you applied for and what happened.
             </p>
-          )}
-          <p className="fine mt-5 max-w-[60ch]">
-            The memory relayer sees the text briefly to make a search vector, and the drafting model reads it to write
-            answers. Neither stores it. What is kept is Seal ciphertext on Walrus.
-          </p>
-        </Step>
-
-        {ledger}
-
-        {/* 02 */}
-        <Step
-          n="02"
-          id="s2"
-          className="order-3 lg:order-none lg:col-start-1"
-          title="Your trip"
-          lede="Pick the form and the trip. Every answer is drafted from your file and cites the fact it came from."
-          locked={ready && facts.length === 0}
-          lockNote="Build your file in step 01 first. Prior only answers from what is on file."
-        >
-          <fieldset>
-            <legend className="label mb-3">Form</legend>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 border-b border-[var(--rule)]">
-              {(Object.keys(FORM_NAMES) as FormId[]).map((f) => (
-                <label key={f} className="cursor-pointer pb-2 -mb-px border-b-2 transition-colors" style={{ borderColor: trip.form === f ? "var(--ink)" : "transparent" }}>
-                  <input type="radio" name="form" className="sr-only" checked={trip.form === f} onChange={() => setTrip({ ...trip, form: f })} />
-                  <span className={`display text-[24px] ${trip.form === f ? "" : "text-[var(--ink-3)]"}`}>{FORM_NAMES[f]}</span>
-                </label>
-              ))}
+            <textarea
+              id="history"
+              className="sheet mt-7"
+              rows={9}
+              value={history}
+              onChange={(e) => setHistory(e.target.value)}
+              placeholder={
+                "I have worked at Lagos Freight Ltd as an accounts officer since March 2018. Before that I was at Zenith Bank from June 2015 to February 2018.\nI live at 14 Adeola Street, Ikeja, Lagos.\nI went to London in August 2019 for two weeks for my cousin's wedding.\nIn 2023 I applied for a Schengen visa to France and was refused."
+              }
+            />
+            <div className="mt-5 flex flex-wrap items-center gap-4">
+              <button className="btn" disabled={!ready || intakeBusy || history.trim().length < 20} onClick={buildFile}>
+                {intakeBusy ? <Busy>Reading your history</Busy> : hasFacts ? "Add to my file" : "Build my file"}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
+                Add a text file or PDF
+              </button>
+              <input ref={fileRef} type="file" accept=".txt,.md,.text,.pdf,text/plain,application/pdf" className="hidden" onChange={onFile} />
             </div>
-          </fieldset>
-          <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2 mt-6">
-            <label className="block">
-              <span className="label">Destination</span>
-              <input className="field" value={trip.destination} onChange={(e) => setTrip({ ...trip, destination: e.target.value })} placeholder="France" />
-            </label>
-            <label className="block">
-              <span className="label">Purpose</span>
-              <input className="field" list="purposes" value={trip.purpose} onChange={(e) => setTrip({ ...trip, purpose: e.target.value })} placeholder="Tourism" />
-              <datalist id="purposes">
-                {["Tourism", "Visiting family", "Business", "Conference", "Medical", "Study visit"].map((p) => <option key={p} value={p} />)}
-              </datalist>
-            </label>
-            <label className="block">
-              <span className="label">Arrive</span>
-              <input type="date" className="field" value={trip.start} onChange={(e) => setTrip({ ...trip, start: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="label">Leave</span>
-              <input type="date" className="field" value={trip.end} min={trip.start || undefined} onChange={(e) => setTrip({ ...trip, end: e.target.value })} />
-            </label>
-          </div>
-          <div className="mt-7 flex flex-wrap items-center gap-4">
-            <button className="btn" disabled={!tripOk || draftBusy || facts.length === 0} onClick={draft}>
-              {draftBusy ? <Busy>Drafting from your file</Busy> : pack ? "Draft again" : "Draft my application"}
-            </button>
-            {!tripOk && <span className="fine">Add a destination and both dates.</span>}
-          </div>
-          <ErrorLine msg={draftErr} />
+            {fileNote && <p className="fine mt-3">{fileNote}</p>}
+            <ErrorLine msg={intakeErr} />
 
-          {pack && (
-            <div className="mt-12">
-              {showingAfter && diff && (
-                <p className="mb-4 mono text-[11px] tracking-[0.12em] text-[var(--seal)]">
-                  THIS IS THE REDRAFT. LINES MARKED NEW CAME FROM YOUR REFUSAL LESSONS.
-                </p>
-              )}
-              <PackView
-                pack={pack}
-                index={index}
-                onFocus={onFocus}
-                newChecklist={showingAfter && diff ? new Set(diff.addedChecklist.map((c) => c.item)) : undefined}
-                newParagraphs={showingAfter && diff ? new Set(diff.addedParas) : undefined}
-              />
-            </div>
-          )}
-        </Step>
+            {lastIntake !== null && !intakeErr && (
+              <p className="slide-in mt-6 text-[17px]">
+                <span className="display text-[30px] text-[var(--ice)] mr-2 tnum">{lastIntake}</span>
+                facts read from your history.{" "}
+                {sealingCount > 0 ? (
+                  <span className="text-[var(--fg-2)]">Each one is being encrypted with Seal and written to Walrus mainnet, about twenty seconds each, all at once. Watch them lock.</span>
+                ) : (
+                  <span className="text-[var(--fg-2)]">All sealed.</span>
+                )}
+              </p>
+            )}
 
-        {/* 03 */}
-        <Step
-          n="03"
-          id="s3"
-          className="order-3 lg:order-none lg:col-start-1"
-          title={<>Got refused <em className="text-[var(--red)]">before?</em></>}
-          lede="Paste the refusal letter. Each reason becomes a lesson in your file, and your pack is redrafted to answer it."
-          locked={ready && facts.length === 0}
-          lockNote="Build your file in step 01 first."
-        >
-          <label htmlFor="letter" className="label block mb-2">Refusal letter</label>
-          <textarea
-            id="letter"
-            className="sheet"
-            style={{ borderLeftColor: "var(--red)", minHeight: 200 }}
-            rows={7}
-            value={letter}
-            onChange={(e) => setLetter(e.target.value)}
-            placeholder={"Paste the full text of the letter, including the reasons. For example: \"You have not provided sufficient evidence of your employment and the funds available to you…\""}
-          />
-          <div className="mt-5 flex flex-wrap items-center gap-4">
-            <button className="btn btn-red" disabled={!!refBusy || letter.trim().length < 30} onClick={readRefusal}>
-              {refBusy === "reading" ? <Busy>Reading the letter</Busy> : refBusy === "redrafting" ? <Busy>Redrafting with the lessons</Busy> : "Learn from this refusal"}
-            </button>
-            {!pack && <span className="fine">Draft a pack in step 02 first to see what changes.</span>}
-          </div>
-          <ErrorLine msg={refErr} />
-
-          {refusal && (
-            <div className="mt-10 slide-in">
-              <div className="grid gap-6 sm:grid-cols-[1fr_auto] items-start">
-                <div>
-                  <div className="label" style={{ color: "var(--red)" }}>On file now</div>
-                  <p className="display text-[28px] sm:text-[32px] leading-tight mt-1">{refusal.refusal.text}</p>
-                  {refusal.refusal.fields?.reasonCodes?.length ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {refusal.refusal.fields.reasonCodes.map((c) => (
-                        <span key={c} className="chip chip-red" style={{ cursor: "default" }}>{c.replace(/_/g, " ")}</span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="py-2 sm:py-0">
-                  <RedStamp rot={-9} className="text-[18px]">Refused</RedStamp>
-                </div>
+            {/* the file, inline on phones and while sealing on desktop */}
+            {hasFacts && (
+              <div className="mt-8 lg:hidden">
+                {fileHead}
+                <div className="rule mt-4" />
+                {ledgerList}
               </div>
-              <div className="mt-6">
-                <div className="label mb-2">Lessons written to your file</div>
-                <ol className="border-t border-[var(--rule)]">
-                  {refusal.lessons.map((l, i) => (
-                    <li key={l.id} className="slide-in py-3 border-b border-[var(--rule)] grid grid-cols-[26px_1fr] gap-2" style={{ animationDelay: `${i * 90}ms` }}>
-                      <span className="mono text-[12px] text-[var(--red)] pt-1">L{i + 1}</span>
-                      <span className="text-[17px]">{l.text}</span>
-                    </li>
-                  ))}
-                </ol>
+            )}
+
+            {hasFacts && (
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <button className="btn btn-ice" onClick={() => setActive(2)}>
+                  Continue to your trip <span className="arrow" aria-hidden>→</span>
+                </button>
+                {sealingCount > 0 && <span className="fine">Sealing carries on in the background.</span>}
               </div>
-            </div>
-          )}
+            )}
+            <p className="fine mt-6 max-w-[60ch]">
+              The memory relayer sees the text briefly to make a search vector, and the drafting model reads it to write answers.
+              Neither stores it. What is kept is Seal ciphertext on Walrus.
+            </p>
+          </Step>
 
-          {before && after && (
-            <div className="mt-12">
-              <PackDiff before={before} after={after} lessons={refusal?.lessons ?? []} index={index} onFocus={onFocus} />
-            </div>
-          )}
-          {refusal && !before && pack && !refBusy && (
-            <button className="btn mt-8" onClick={() => void redraftWith(facts, pack)}>Redraft with the lessons</button>
-          )}
-        </Step>
-
-        {/* 04 */}
-        <Step
-          n="04"
-          id="s4"
-          className="order-3 lg:order-none lg:col-start-1"
-          title="Share with a consultant"
-          lede="Give a consultant a link that works for minutes, not forever. The pack is sealed to a policy on Sui; when the Sui clock passes the end time, the key servers stop releasing it."
-          locked={ready && !pack}
-          lockNote="Draft a pack in step 02 first. That is what gets shared."
-        >
-          <div className="flex flex-wrap items-end gap-6">
-            <div>
-              <div className="label mb-2">For how long</div>
-              <div className="flex items-center gap-1">
-                {[5, 10, 30, 60].map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMinutes(m)}
-                    className="mono text-[14px] px-3 py-2 border cursor-pointer transition-colors"
-                    style={{
-                      borderColor: minutes === m ? "var(--ink)" : "var(--rule)",
-                      background: minutes === m ? "var(--ink)" : "transparent",
-                      color: minutes === m ? "var(--paper)" : "var(--ink-2)",
-                    }}
-                  >
-                    {m}
-                  </button>
+          {/* 2 */}
+          <Step
+            n={2}
+            title="Your trip"
+            status={s2}
+            lockNote="Build your file in step 1 first. Prior only answers from what is on file."
+            summary={
+              pack ? (
+                <>
+                  {FORM_NAMES[pack.trip.form]}, {pack.trip.destination}. {pack.answers.length} answers,{" "}
+                  <span style={{ color: pack.contradictions.length ? "var(--red)" : undefined }}>
+                    {pack.contradictions.length} {pack.contradictions.length === 1 ? "contradiction" : "contradictions"}
+                  </span>.
+                </>
+              ) : (
+                "Pick a form and a trip. Get a pack where every answer cites your file."
+              )
+            }
+            onOpen={() => setActive(2)}
+          >
+            <p className="lede max-w-[58ch]">Pick the form and the trip. Every answer is drafted from your file and cites the fact it came from.</p>
+            <fieldset className="mt-7">
+              <legend className="label mb-3">Form</legend>
+              <div className="flex flex-wrap gap-x-7 gap-y-2 border-b border-[var(--rule)]">
+                {(Object.keys(FORM_NAMES) as FormId[]).map((f) => (
+                  <label key={f} className="cursor-pointer pb-3 -mb-px border-b-2 transition-colors" style={{ borderColor: trip.form === f ? "var(--ice)" : "transparent" }}>
+                    <input type="radio" name="form" className="sr-only" checked={trip.form === f} onChange={() => setTrip({ ...trip, form: f })} />
+                    <span className={`text-[17px] sm:text-[19px] font-medium ${trip.form === f ? "" : "text-[var(--fg-3)]"}`}>{FORM_NAMES[f]}</span>
+                  </label>
                 ))}
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  aria-label="Minutes"
-                  className="field !w-[84px] ml-2 text-center"
-                  value={minutes}
-                  onChange={(e) => setMinutes(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
-                />
-                <span className="label ml-1">min</span>
               </div>
+            </fieldset>
+            <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2 mt-7">
+              <label className="block">
+                <span className="label">Destination</span>
+                <input className="field" value={trip.destination} onChange={(e) => setTrip({ ...trip, destination: e.target.value })} placeholder="France" />
+              </label>
+              <label className="block">
+                <span className="label">Purpose</span>
+                <input className="field" list="purposes" value={trip.purpose} onChange={(e) => setTrip({ ...trip, purpose: e.target.value })} placeholder="Tourism" />
+                <datalist id="purposes">
+                  {["Tourism", "Visiting family", "Business", "Conference", "Medical", "Study visit"].map((p) => <option key={p} value={p} />)}
+                </datalist>
+              </label>
+              <label className="block">
+                <span className="label">Arrive</span>
+                <input type="date" className="field" value={trip.start} onChange={(e) => setTrip({ ...trip, start: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className="label">Leave</span>
+                <input type="date" className="field" value={trip.end} min={trip.start || undefined} onChange={(e) => setTrip({ ...trip, end: e.target.value })} />
+              </label>
             </div>
-            <button className="btn btn-seal" disabled={shareBusy || !pack} onClick={createShare}>
-              {shareBusy ? <Busy>Sealing the pack on Sui</Busy> : share ? "Make a new link" : "Create the link"}
-            </button>
-          </div>
-          <ErrorLine msg={shareErr} />
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <button className="btn" disabled={!tripOk || draftBusy || facts.length === 0} onClick={draft}>
+                {draftBusy ? <Busy>Drafting from your file</Busy> : pack ? "Draft again" : "Draft my application"}
+              </button>
+              {!tripOk && <span className="fine">Add a destination and both dates.</span>}
+            </div>
+            <ErrorLine msg={draftErr} />
 
-          {share && (
-            <div className="mt-10 slide-in">
-              <div className="label mb-2">Consultant link</div>
-              <div className="flex flex-wrap items-stretch gap-0 border border-[var(--rule-strong)]">
-                <code className="mono text-[12.5px] px-3 py-3 flex-1 min-w-0 break-id bg-[var(--paper-2)]">{share.link}</code>
-                <div className="flex">
+            {pack && (
+              <div className="mt-12">
+                {showingAfter && diff && (
+                  <p className="mb-5 mono text-[11px] tracking-[0.12em] text-[var(--ice)] uppercase">
+                    This is the redraft. Lines marked new came from your refusal lessons.
+                  </p>
+                )}
+                <PackView
+                  pack={pack}
+                  index={index}
+                  onFocus={onFocus}
+                  newChecklist={showingAfter && diff ? new Set(diff.addedChecklist.map((c) => c.item)) : undefined}
+                  newParagraphs={showingAfter && diff ? new Set(diff.addedParas) : undefined}
+                />
+                <div className="mt-10 flex flex-wrap items-center gap-4">
+                  <button className="btn btn-ice" onClick={() => setActive(3)}>
+                    Next: got refused before? <span className="arrow" aria-hidden>→</span>
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setActive(4)}>Share with a consultant</button>
+                </div>
+              </div>
+            )}
+          </Step>
+
+          {/* 3 */}
+          <Step
+            n={3}
+            title={<>Got refused <span className="text-[var(--red)]">before?</span></>}
+            status={s3}
+            red
+            lockNote="Build your file in step 1 first."
+            summary={
+              refusal ? (
+                <>Refusal on file, {refusal.lessons.length} {refusal.lessons.length === 1 ? "lesson" : "lessons"} learned{diff ? `, ${diff.addedChecklist.length + diff.addedParas.length + diff.changedAnswers.length} changes in the pack` : ""}.</>
+              ) : (
+                "Paste the letter. Each reason becomes a lesson and the pack is redrafted."
+              )
+            }
+            onOpen={() => setActive(3)}
+          >
+            <p className="lede max-w-[58ch]">Paste the refusal letter. Each reason becomes a lesson in your file, and your pack is redrafted to answer it.</p>
+            <textarea
+              id="letter"
+              className="sheet mt-7"
+              style={{ borderLeftColor: "var(--red)", minHeight: 200 }}
+              rows={7}
+              value={letter}
+              onChange={(e) => setLetter(e.target.value)}
+              placeholder={"Paste the full text of the letter, including the reasons. For example: \"You have not provided sufficient evidence of your employment and the funds available to you…\""}
+            />
+            <div className="mt-5 flex flex-wrap items-center gap-4">
+              <button className="btn btn-red" disabled={!!refBusy || letter.trim().length < 30} onClick={readRefusal}>
+                {refBusy === "reading" ? <Busy>Reading the letter</Busy> : refBusy === "redrafting" ? <Busy>Redrafting with the lessons</Busy> : "Learn from this refusal"}
+              </button>
+              {!pack && <span className="fine">Draft a pack in step 2 first to see what changes.</span>}
+            </div>
+            <ErrorLine msg={refErr} />
+
+            {refusal && (
+              <div className="mt-12 slide-in">
+                <div className="label" style={{ color: "var(--red)" }}>On file now</div>
+                <p className="display text-[24px] sm:text-[30px] mt-2 max-w-[40ch]">{refusal.refusal.text}</p>
+                {refusal.refusal.fields?.reasonCodes?.length ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {refusal.refusal.fields.reasonCodes.map((c) => (
+                      <span key={c} className="chip chip-red" style={{ cursor: "default" }}>{c.replace(/_/g, " ")}</span>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="mt-8">
+                  <div className="label mb-2">Lessons written to your file</div>
+                  <ol className="rule-strong">
+                    {refusal.lessons.map((l, i) => (
+                      <li key={l.id} className="slide-in py-3.5 border-b border-[var(--rule)] grid grid-cols-[30px_1fr] gap-2" style={{ animationDelay: `${i * 90}ms` }}>
+                        <span className="mono text-[12px] text-[var(--red)] pt-1">L{i + 1}</span>
+                        <span className="text-[17px]">{l.text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            {refBusy === "redrafting" && (
+              <p className="mt-10 text-[17px] text-[var(--fg-2)] scan inline-block pr-6">Redrafting the pack with the lessons</p>
+            )}
+
+            {before && after && (
+              <div className="mt-14">
+                <PackDiff before={before} after={after} lessons={refusal?.lessons ?? []} index={index} onFocus={onFocus} />
+                <div className="mt-10 flex flex-wrap items-center gap-4">
+                  <button className="btn btn-ice" onClick={() => setActive(4)}>
+                    Share the new pack with a consultant <span className="arrow" aria-hidden>→</span>
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setActive(2)}>Read the full redraft</button>
+                </div>
+              </div>
+            )}
+            {refusal && !before && pack && !refBusy && (
+              <button className="btn mt-8" onClick={() => void redraftWith(facts, pack)}>Redraft with the lessons</button>
+            )}
+          </Step>
+
+          {/* 4 */}
+          <Step
+            n={4}
+            title="Share with a consultant"
+            status={s4}
+            lockNote="Draft a pack in step 2 first. That is what gets shared."
+            summary={
+              share ? (
+                <>Link made for {Math.round((share.expiresMs - share.createdAt) / 60000)} minutes. Access is <span style={{ color: grantWord === "live" ? "var(--ice)" : "var(--red)" }}>{grantWord ?? "being read from Sui"}</span>.</>
+              ) : (
+                "A link that works for minutes. Access ends on the Sui clock."
+              )
+            }
+            onOpen={() => setActive(4)}
+          >
+            <p className="lede max-w-[58ch]">
+              Give a consultant a link that works for minutes, not forever. The pack is sealed to a policy on Sui; when the Sui clock
+              passes the end time, the key servers stop releasing it.
+            </p>
+            <div className="mt-8 flex flex-wrap items-end gap-8">
+              <div>
+                <div className="label mb-3">For how long</div>
+                <div className="flex items-center gap-1.5">
+                  {[5, 10, 30, 60].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMinutes(m)}
+                      className="mono text-[14px] px-3.5 py-2 rounded-full border cursor-pointer transition-colors"
+                      style={{
+                        borderColor: minutes === m ? "var(--fg)" : "var(--rule-strong)",
+                        background: minutes === m ? "var(--fg)" : "transparent",
+                        color: minutes === m ? "var(--bg)" : "var(--fg-2)",
+                      }}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    aria-label="Minutes"
+                    className="field !w-[72px] ml-2 text-center"
+                    value={minutes}
+                    onChange={(e) => setMinutes(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
+                  />
+                  <span className="label ml-1">min</span>
+                </div>
+              </div>
+              <button className="btn btn-ice" disabled={shareBusy || !pack} onClick={createShare}>
+                {shareBusy ? <Busy>Sealing the pack on Sui</Busy> : share ? "Make a new link" : "Create the link"}
+              </button>
+            </div>
+            <ErrorLine msg={shareErr} />
+
+            {share && (
+              <div className="mt-12 slide-in">
+                <div className="label mb-2">Consultant link</div>
+                <div className="flex flex-wrap items-stretch rounded-full border border-[var(--rule-strong)] overflow-hidden">
+                  <code className="mono text-[12.5px] px-4 py-3 flex-1 min-w-0 truncate">{share.link}</code>
                   <button
-                    className="label px-4 border-l border-[var(--rule-strong)] cursor-pointer hover:text-[var(--ink)]"
+                    className="label px-4 border-l border-[var(--rule-strong)] cursor-pointer hover:text-[var(--fg)]"
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(share.link);
@@ -759,117 +844,177 @@ export default function Flow() {
                   >
                     {copied ? "Copied" : "Copy"}
                   </button>
-                  <a className="label px-4 border-l border-[var(--rule-strong)] grid place-items-center hover:text-[var(--ink)]" href={share.link} target="_blank" rel="noreferrer">
+                  <a className="label px-4 border-l border-[var(--rule-strong)] grid place-items-center hover:text-[var(--fg)]" href={share.link} target="_blank" rel="noreferrer">
                     Open
                   </a>
                 </div>
-              </div>
 
-              <div className="mt-8 grid gap-8 md:grid-cols-[auto_1fr] items-center">
-                {grant?.revoked ? (
-                  <div className="flex items-center gap-5">
-                    <RedStamp rot={-7} className="text-[20px]">Revoked</RedStamp>
-                    <p className="text-[16px] text-[var(--ink-2)] max-w-[30ch]">New reads are refused. Anything already opened stays opened.</p>
-                  </div>
-                ) : (
-                  <Countdown expiresMs={grant?.expiresMs ?? share.expiresMs} totalMs={share.expiresMs - share.createdAt} />
-                )}
-                <dl className="mono text-[12px] space-y-1.5 min-w-0">
-                  <div className="flex gap-2 flex-wrap">
-                    <dt className="text-[var(--ink-3)]">Status on Sui</dt>
-                    <dd>
-                      {grant ? (
-                        grant.revoked ? <span className="text-[var(--red)]">revoked</span> : grant.live ? <span className="text-[var(--seal)]">live</span> : <span className="text-[var(--red)]">expired</span>
-                      ) : grantErr ? (
-                        <span className="text-[var(--red)]">{grantErr}</span>
-                      ) : (
-                        <Busy>reading</Busy>
-                      )}
-                      {grant?.readVia && <span className="text-[var(--ink-3)]"> · read via {grant.readVia}</span>}
-                    </dd>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <dt className="text-[var(--ink-3)]">Grant</dt>
-                    <dd><a className="link-u break-id" href={`https://suivision.xyz/object/${share.grantId}`} target="_blank" rel="noreferrer">{short(share.grantId, 10, 6)}</a></dd>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <dt className="text-[var(--ink-3)]">Created in</dt>
-                    <dd><a className="link-u break-id" href={suiTxUrl(share.txDigest)} target="_blank" rel="noreferrer">{short(share.txDigest, 10, 6)}</a></dd>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <dt className="text-[var(--ink-3)]">Sealed pack</dt>
-                    <dd><a className="link-u break-id" href={walrusBlobUrl(share.blobId)} target="_blank" rel="noreferrer">{short(share.blobId, 10, 6)}</a></dd>
-                  </div>
-                  {(grant?.consultant || share.consultantAddress) && (
-                    <div className="flex gap-2 flex-wrap">
-                      <dt className="text-[var(--ink-3)]">Consultant key</dt>
-                      <dd><a className="link-u" href={suiAccountUrl(grant?.consultant ?? share.consultantAddress!)} target="_blank" rel="noreferrer">{short(grant?.consultant ?? share.consultantAddress!)}</a></dd>
+                <div className="mt-10">
+                  {grant?.revoked ? (
+                    <div>
+                      <div className="label" style={{ color: "var(--red)" }}>Revoked</div>
+                      <p className="display text-[32px] sm:text-[44px] text-[var(--red)] mt-2">Access ended.</p>
+                      <p className="mt-3 text-[16px] text-[var(--fg-2)] max-w-[40ch]">New reads are refused on Sui. Anything already opened stays opened.</p>
                     </div>
+                  ) : (
+                    <Countdown expiresMs={grant?.expiresMs ?? share.expiresMs} totalMs={share.expiresMs - share.createdAt} />
+                  )}
+                </div>
+
+                <p className="mt-6 text-[15px] text-[var(--fg-2)]">
+                  Status on Sui:{" "}
+                  {grant ? (
+                    <span style={{ color: grant.revoked || !grant.live ? "var(--red)" : "var(--ice)" }}>{grantWord}</span>
+                  ) : grantErr ? (
+                    <span className="text-[var(--red)]">{grantErr}</span>
+                  ) : (
+                    <Busy>reading</Busy>
+                  )}
+                  {grant?.readVia && <span className="text-[var(--fg-3)]"> · read via {grant.readVia}</span>}
+                </p>
+
+                {!grant?.revoked && (grant ? grant.live : true) && (
+                  <button className="btn btn-ghost mt-6" style={{ color: "var(--red)", borderColor: "var(--red)" }} disabled={revokeBusy} onClick={revoke}>
+                    {revokeBusy ? <Busy>Revoking on Sui</Busy> : "Revoke now"}
+                  </button>
+                )}
+                <p className="fine mt-4 max-w-[60ch]">Revoking or expiry stops new reads. It cannot make a consultant unsee what they already opened.</p>
+
+                <Details label="Onchain details">
+                  <Row k="Grant"><a className="link-u" href={`https://suivision.xyz/object/${share.grantId}`} target="_blank" rel="noreferrer">{share.grantId}</a></Row>
+                  <Row k="Created in"><a className="link-u" href={suiTxUrl(share.txDigest)} target="_blank" rel="noreferrer">{share.txDigest}</a></Row>
+                  <Row k="Sealed pack"><a className="link-u" href={walrusBlobUrl(share.blobId)} target="_blank" rel="noreferrer">{share.blobId}</a></Row>
+                  {(grant?.consultant || share.consultantAddress) && (
+                    <Row k="Consultant key"><a className="link-u" href={suiAccountUrl(grant?.consultant ?? share.consultantAddress!)} target="_blank" rel="noreferrer">{grant?.consultant ?? share.consultantAddress}</a></Row>
                   )}
                   {share.revokeTx && (
-                    <div className="flex gap-2 flex-wrap">
-                      <dt className="text-[var(--ink-3)]">Revoked in</dt>
-                      <dd><a className="link-u break-id text-[var(--red)]" href={suiTxUrl(share.revokeTx)} target="_blank" rel="noreferrer">{short(share.revokeTx, 10, 6)}</a></dd>
-                    </div>
+                    <Row k="Revoked in"><a className="link-u text-[var(--red)]" href={suiTxUrl(share.revokeTx)} target="_blank" rel="noreferrer">{share.revokeTx}</a></Row>
                   )}
-                </dl>
-              </div>
+                </Details>
 
-              {!grant?.revoked && (grant ? grant.live : true) && (
-                <button className="btn btn-ghost mt-8" style={{ color: "var(--red)", borderColor: "var(--red)" }} disabled={revokeBusy} onClick={revoke}>
-                  {revokeBusy ? <Busy>Revoking on Sui</Busy> : "Revoke now"}
-                </button>
-              )}
-              <p className="fine mt-4 max-w-[60ch]">
-                Revoking or expiry stops new reads. It cannot make a consultant unsee what they already opened.
-              </p>
+                <div className="mt-10">
+                  <button className="btn btn-ghost" onClick={() => setActive(5)}>
+                    Next: does it survive us? <span className="arrow" aria-hidden>→</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </Step>
+
+          {/* 5 */}
+          <Step
+            n={5}
+            title="It survives us"
+            status={s5}
+            lockNote="Build your file in step 1 first."
+            summary={
+              restored !== null ? (
+                <>{restored} {restored === 1 ? "fact" : "facts"} came back from Walrus.</>
+              ) : wiped !== null ? (
+                <span className="text-[var(--red)]">{wiped} facts wiped from this device. Restore them.</span>
+              ) : (
+                "Wipe this device, then bring the file back from Walrus."
+              )
+            }
+            onOpen={() => setActive(5)}
+          >
+            <p className="lede max-w-[58ch]">Your file does not live in our database. Wipe the copy on this device, then bring it back from Walrus.</p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <button className="btn btn-ghost" disabled={facts.length === 0 || restoreBusy} onClick={wipe}>
+                Wipe local copy
+              </button>
+              <span className="mono text-[var(--fg-3)]" aria-hidden>→</span>
+              <button className="btn btn-ice" disabled={restoreBusy || !ready} onClick={restore}>
+                {restoreBusy ? <Busy>Reading from Walrus</Busy> : "Restore from Walrus"}
+              </button>
             </div>
-          )}
-        </Step>
-
-        {/* 05 */}
-        <Step
-          n="05"
-          id="s5"
-          className="order-3 lg:order-none lg:col-start-1"
-          title="It survives us"
-          lede="Your file does not live in our database. Wipe the copy on this device, then bring it back from Walrus."
-          locked={ready && facts.length === 0 && wiped === null}
-          lockNote="Build your file in step 01 first."
-        >
-          <div className="flex flex-wrap items-center gap-4">
-            <button className="btn btn-ghost" disabled={facts.length === 0 || restoreBusy} onClick={wipe}>
-              Wipe local index
-            </button>
-            <span className="mono text-[var(--ink-3)]" aria-hidden>→</span>
-            <button className="btn btn-seal" disabled={restoreBusy || !ready} onClick={restore}>
-              {restoreBusy ? <Busy>Reading from Walrus</Busy> : "Restore from Walrus"}
-            </button>
-          </div>
-          {facts.length > 0 && facts.some((f) => !f.blobId) && wiped === null && (
-            <p className="fine mt-3">{facts.filter((f) => !f.blobId).length} facts are not sealed yet. A wipe now would lose them for good.</p>
-          )}
-          <ErrorLine msg={restoreErr} />
-          <div className="mt-6 min-h-[40px]">
-            {wiped !== null && restored === null && !restoreBusy && (
-              <p className="slide-in text-[17px]">
-                <span className="strike-red mono">{wiped} facts</span> removed from this device. The file panel is empty.
-              </p>
+            {facts.length > 0 && facts.some((f) => !f.blobId) && wiped === null && (
+              <p className="fine mt-3">{facts.filter((f) => !f.blobId).length} facts are not sealed yet. A wipe now would lose them for good.</p>
             )}
-            {restored !== null && (
-              <div className="slide-in flex items-center gap-5">
-                <Seal size={78} center={String(restored)} sub="RESTORED" rot={-8} />
-                <p className="text-[18px]">
-                  {restored} {restored === 1 ? "fact" : "facts"} came back from Walrus, decrypted and back in your file.
-                </p>
+            <ErrorLine msg={restoreErr} />
+            <div className="mt-8 min-h-[40px]">
+              {wiped !== null && restored === null && !restoreBusy && (
+                <div className="slide-in">
+                  <p className="display text-[32px] sm:text-[44px]">
+                    <span className="text-[var(--red)]">{wiped} facts</span> gone from this device.
+                  </p>
+                  <p className="mt-2 text-[16px] text-[var(--fg-2)]">The file is empty here. It is still on Walrus.</p>
+                </div>
+              )}
+              {restoreBusy && <p className="text-[17px] text-[var(--fg-2)] scan inline-block pr-6">Downloading and decrypting your facts from Walrus</p>}
+              {restored !== null && (
+                <div className="slide-in flex items-center gap-6">
+                  <FileSphere facts={facts} seals={seals} size={110} />
+                  <div>
+                    <p className="display text-[32px] sm:text-[44px]">
+                      <span className="text-[var(--ice)] tnum">{restored}</span> {restored === 1 ? "fact" : "facts"} came back.
+                    </p>
+                    <p className="mt-2 text-[16px] text-[var(--fg-2)]">Downloaded from Walrus, decrypted, back in your file.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            {hasFacts && (
+              <div className="mt-8 lg:hidden">
+                {fileHead}
+                <div className="rule mt-4" />
+                {ledgerList}
               </div>
             )}
-          </div>
-        </Step>
+          </Step>
+
+          {/* 6, optional */}
+          <Step
+            n={6}
+            title="Let an agent buy this pack"
+            status={s6}
+            lockNote="Needs a trip and at least one sealed fact."
+            summary={
+              agent ? (
+                <>Paid {agent.verified?.amountUsdc ?? "0.05"} USDC on Sui, {agent.verified?.ok ? "verified through Tatum" : "not yet confirmed by Tatum"}.</>
+              ) : (
+                "Optional. Prior's demo agent pays 0.05 USDC on Sui over MPP and gets a pack from this file."
+              )
+            }
+            onOpen={() => setActive(6)}
+          >
+            <p className="lede max-w-[58ch]">
+              Travel agents and booking bots can ask Prior for a pack. Prior&apos;s own demo agent calls the paid endpoint, pays in USDC on
+              Sui over MPP, and gets a pack built from this file. The payment is then read back from Sui through Tatum.
+            </p>
+            <button className="btn mt-8" disabled={agentBusy || !ready || !(pack || tripOk) || sealed === 0} onClick={agentBuy}>
+              {agentBusy ? <Busy>Agent paying on Sui</Busy> : "Run the agent purchase"}
+            </button>
+            {sealed === 0 && <p className="fine mt-3">Needs at least one sealed fact and a trip.</p>}
+            <ErrorLine msg={agentErr} />
+            {agent && (
+              <div className="slide-in mt-10">
+                {agent.verified?.ok ? (
+                  <p className="display text-[32px] sm:text-[44px]">
+                    <span className="text-[var(--ice)]">Paid {agent.verified.amountUsdc ?? "0.05"} USDC</span> on Sui, verified through Tatum.
+                  </p>
+                ) : (
+                  <p className="text-[17px] text-[var(--red)]">
+                    Tatum has not confirmed this payment yet{agent.verified?.reason ? `: ${agent.verified.reason}` : ""}. Check the receipt.
+                  </p>
+                )}
+                <p className="mt-3 text-[16px] text-[var(--fg-2)]">
+                  The agent received a pack with {agent.pack?.answers?.length ?? 0} answers and {agent.pack?.checklist?.length ?? 0} documents.
+                </p>
+                <Details label="Receipt on Sui">
+                  <Row k="Receipt"><a className="link-u" href={suiTxUrl(agent.receiptTx)} target="_blank" rel="noreferrer">{agent.receiptTx}</a></Row>
+                  {agent.payer && <Row k="Payer"><a className="link-u" href={suiAccountUrl(agent.payer)} target="_blank" rel="noreferrer">{short(agent.payer, 12, 8)}</a></Row>}
+                  {agent.recipient && <Row k="Paid to"><a className="link-u" href={suiAccountUrl(agent.recipient)} target="_blank" rel="noreferrer">{short(agent.recipient, 12, 8)}</a></Row>}
+                </Details>
+              </div>
+            )}
+          </Step>
+        </div>
+
+        {aside}
       </div>
 
-      <div className="mt-20 rule" />
-      <p className="fine mt-4">
+      <p className="fine mt-12">
         Guidance, not legal advice. Prior drafts and cites; you review and file it yourself. See the onchain record on{" "}
         <Link className="link-u" href="/proof">the proof page</Link>.
       </p>

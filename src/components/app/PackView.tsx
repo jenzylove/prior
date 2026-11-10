@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import type { Fact, Pack, Answer, Question } from "@/components/ui/types";
 import { FORMS, FORM_META } from "@/lib/core/forms";
 import { KIND_LABEL, isRed } from "./FactLedger";
-import { RedStamp } from "@/components/ui/Stamp";
 import { LetterText } from "./LetterText";
 
 export type FactIndex = Map<string, { fact: Fact; n: number }>;
@@ -45,15 +44,15 @@ export function Cites({
                 onFocus?.(id);
               }}
             >
-              {hit ? `F${hit.n} · ${KIND_LABEL[hit.fact.kind] ?? hit.fact.kind}` : id}
+              {hit ? `F${hit.n} ${KIND_LABEL[hit.fact.kind] ?? hit.fact.kind}` : "F?"}
             </button>
           );
         })}
       </div>
       {open && (
         <blockquote
-          className="slide-in mt-2 pl-3 border-l-2 text-[15px] italic text-[var(--ink-2)]"
-          style={{ borderColor: quoted && isRed(quoted.fact) ? "var(--red)" : "var(--seal)" }}
+          className="slide-in mt-2 pl-3 border-l-2 text-[15px] text-[var(--fg-2)]"
+          style={{ borderColor: quoted && isRed(quoted.fact) ? "var(--red)" : "var(--ice)" }}
         >
           {quoted ? quoted.fact.text : missingNote}
         </blockquote>
@@ -63,8 +62,8 @@ export function Cites({
 }
 
 const STATUS: Record<Answer["status"], { label: string; color: string }> = {
-  filled: { label: "Filled from your file", color: "var(--seal)" },
-  needs_input: { label: "Needs your input", color: "var(--ink-3)" },
+  filled: { label: "From your file", color: "var(--ice)" },
+  needs_input: { label: "Needs your input", color: "var(--fg-3)" },
   conflict: { label: "Conflict", color: "var(--red)" },
 };
 
@@ -113,46 +112,55 @@ export function PackView({
     conflict: pack.answers.filter((a) => a.status === "conflict").length,
   };
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [openSection, setOpenSection] = useState<string | null>(groups[0]?.section ?? null);
   const meta = FORM_META[pack.trip.form];
 
   return (
     <div className="rise">
-      {/* form header */}
-      <div className="border-y-[3px] border-double border-[var(--rule-strong)] py-4 grid gap-3 sm:grid-cols-[1fr_auto] items-end">
+      {/* pack head */}
+      <div className="rule-strong pt-5 grid gap-4 sm:grid-cols-[1fr_auto] items-end">
         <div>
           <div className="label">{meta?.issuer ?? "Application"}</div>
-          <div className="display text-[30px] sm:text-[38px] leading-tight mt-1">{meta?.name ?? pack.trip.form}</div>
-          <div className="mono text-[13px] text-[var(--ink-2)] mt-1">
+          <div className="display text-[26px] sm:text-[34px] mt-1.5">{meta?.name ?? pack.trip.form}</div>
+          <div className="mono text-[12.5px] text-[var(--fg-2)] mt-2">
             {pack.trip.destination} · {pack.trip.purpose} · {pack.trip.start} to {pack.trip.end}
           </div>
         </div>
-        <div className="flex gap-5 mono text-[12px]">
-          <span><b className="text-[22px] font-medium text-[var(--seal)]">{counts.filled}</b> filled</span>
-          <span><b className="text-[22px] font-medium">{counts.needs}</b> to add</span>
-          <span><b className="text-[22px] font-medium text-[var(--red)]">{counts.conflict}</b> conflict</span>
+        <div className="flex gap-6">
+          {[
+            [counts.filled, "from your file", "var(--ice)"],
+            [counts.needs, "to add", "var(--fg-3)"],
+            [counts.conflict, counts.conflict === 1 ? "conflict" : "conflicts", "var(--red)"],
+          ].map(([n, l, c]) => (
+            <div key={l as string}>
+              <div className="display text-[30px] tnum" style={{ color: c as string }}>{n as number}</div>
+              <div className="label mt-0.5">{l as string}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* contradictions */}
+      {/* contradictions first */}
       {pack.contradictions.length > 0 && (
-        <div className="mt-8 relative border-l-4 border-[var(--red)] pl-5 pr-4 py-5" style={{ background: "var(--red-soft)" }}>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="label" style={{ color: "var(--red)" }}>
-              {pack.contradictions.length} {pack.contradictions.length === 1 ? "contradiction" : "contradictions"} with your record
-            </div>
-            <RedStamp rot={-4}>Fix before filing</RedStamp>
+        <section className="mt-10">
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--red)] pulse-red" />
+            <h4 className="display text-[22px] sm:text-[26px] text-[var(--red)]">
+              {pack.contradictions.length} {pack.contradictions.length === 1 ? "contradiction" : "contradictions"} with what you filed before
+            </h4>
           </div>
-          <ol className="mt-4 space-y-5">
+          <p className="fine mt-2">Fix these before you file. An officer compares every answer to your earlier forms.</p>
+          <ol className="mt-5 border-t border-[var(--red)]">
             {pack.contradictions.map((c, i) => (
-              <li key={c.id} className="slide-in grid grid-cols-[26px_1fr] gap-2" style={{ animationDelay: `${i * 80}ms` }}>
-                <span className="mono text-[12px] pt-1 text-[var(--red)]">{i + 1}.</span>
+              <li key={c.id} className="slide-in py-5 border-b border-[var(--rule)] grid grid-cols-[28px_1fr] gap-3" style={{ animationDelay: `${i * 80}ms` }}>
+                <span className="mono text-[12px] pt-1 text-[var(--red)]">{i + 1}</span>
                 <div>
-                  <p className="text-[17px] leading-snug">
-                    {c.summary}{" "}
-                    {c.severity === "high" && <span className="mono text-[10px] tracking-[0.14em] text-[var(--red)] align-middle">HIGH</span>}
+                  <p className="text-[18px] leading-snug font-medium">
+                    {c.summary}
+                    {c.severity === "high" && <span className="ml-2 mono text-[10px] tracking-[0.14em] text-[var(--red)] align-middle">HIGH</span>}
                   </p>
-                  <p className="mt-1.5 text-[16px] text-[var(--ink-2)]">
-                    <span className="label mr-2" style={{ color: "var(--red)" }}>Fix</span>
+                  <p className="mt-2 text-[16px] text-[var(--fg-2)]">
+                    <span className="label mr-2 !text-[var(--fg)]">Fix</span>
                     {c.fix}
                   </p>
                   <Cites ids={c.factIds} index={index} onFocus={onFocus} missingNote={missingNote} />
@@ -160,107 +168,117 @@ export function PackView({
               </li>
             ))}
           </ol>
-        </div>
+        </section>
       )}
 
-      {/* answers */}
-      <div className="mt-10 space-y-10">
-        {groups.map((g) => (
-          <section key={g.section}>
-            <div className="flex items-baseline gap-3 mb-1">
-              <h4 className="display text-[26px]">{g.section}</h4>
-              <div className="flex-1 perforation translate-y-[-4px]" />
-            </div>
-            <div>
-              {g.rows.map(({ a, q }) => {
-                const st = STATUS[a.status];
-                return (
-                  <div key={a.questionId} className="grid gap-x-6 gap-y-1 py-3.5 border-b border-[var(--rule)] md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)]">
-                    <div className="text-[15px] text-[var(--ink-2)] leading-snug">
-                      {q?.label ?? a.questionId}
-                      {q?.disclosure && <span className="ml-2 mono text-[10px] tracking-[0.12em] text-[var(--red)]">DISCLOSURE</span>}
-                    </div>
-                    <div className="min-w-0">
-                      {a.status === "needs_input" && !a.value ? (
-                        <div className="mono text-[14px] text-[var(--ink-3)] border-b border-dashed border-[var(--rule-strong)] pb-1">
-                          Needs your input
-                        </div>
-                      ) : (
-                        <div
-                          className="mono text-[14.5px] whitespace-pre-wrap break-words"
-                          style={a.status === "conflict" ? { color: "var(--red)" } : undefined}
-                        >
-                          {a.value}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} />
-                        <span className="mono text-[10.5px] tracking-[0.1em] uppercase" style={{ color: st.color }}>
-                          {st.label}
-                        </span>
-                      </div>
-                      {a.note && <p className="text-[14px] italic text-[var(--ink-2)] mt-1">{a.note}</p>}
-                      <Cites ids={a.cites} index={index} onFocus={onFocus} missingNote={missingNote} />
+      {/* answers: one section open at a time */}
+      <section className="mt-12">
+        <div className="label mb-3">Answers, by section of the form</div>
+        <div className="rule-strong">
+          {groups.map((g) => {
+            const on = openSection === g.section;
+            const sc = g.rows.filter((r) => r.a.status === "conflict").length;
+            const sn = g.rows.filter((r) => r.a.status === "needs_input").length;
+            return (
+              <div key={g.section} className="border-b border-[var(--rule)]">
+                <button
+                  type="button"
+                  className="w-full text-left py-4 flex items-center justify-between gap-4 cursor-pointer"
+                  aria-expanded={on}
+                  onClick={() => setOpenSection(on ? null : g.section)}
+                >
+                  <span className="display text-[20px] sm:text-[24px]" style={{ color: on ? "var(--fg)" : "var(--fg-2)" }}>{g.section}</span>
+                  <span className="flex items-center gap-4 mono text-[11px] text-[var(--fg-3)] shrink-0">
+                    <span>{g.rows.length} {g.rows.length === 1 ? "answer" : "answers"}</span>
+                    {sc > 0 && <span className="text-[var(--red)]">{sc} conflict</span>}
+                    {sn > 0 && <span>{sn} to add</span>}
+                    <span className="text-[18px] leading-none transition-transform duration-500" style={{ transform: on ? "rotate(45deg)" : "none", color: on ? "var(--ice)" : undefined }} aria-hidden>+</span>
+                  </span>
+                </button>
+                <div className="grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{ gridTemplateRows: on ? "1fr" : "0fr" }}>
+                  <div className="overflow-hidden">
+                    <div className="pb-4">
+                      {g.rows.map(({ a, q }) => {
+                        const st = STATUS[a.status];
+                        return (
+                          <div key={a.questionId} className="grid gap-x-8 gap-y-1 py-3.5 border-t border-[var(--rule)] md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)]">
+                            <div className="text-[15px] text-[var(--fg-2)] leading-snug">
+                              {q?.label ?? a.questionId}
+                              {q?.disclosure && <span className="ml-2 mono text-[10px] tracking-[0.12em] text-[var(--red)]">DISCLOSURE</span>}
+                            </div>
+                            <div className="min-w-0">
+                              {a.status === "needs_input" && !a.value ? (
+                                <div className="text-[15px] text-[var(--fg-3)] border-b border-dashed border-[var(--rule-strong)] pb-1 inline-block">Needs your input</div>
+                              ) : (
+                                <div className="text-[16px] whitespace-pre-wrap break-words" style={a.status === "conflict" ? { color: "var(--red)" } : undefined}>
+                                  {a.value}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.color }} />
+                                <span className="mono text-[10.5px] tracking-[0.1em] uppercase" style={{ color: st.color }}>{st.label}</span>
+                              </div>
+                              {a.note && <p className="text-[14px] text-[var(--fg-2)] mt-1">{a.note}</p>}
+                              <Cites ids={a.cites} index={index} onFocus={onFocus} missingNote={missingNote} />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* cover letter */}
       <section className="mt-14">
-        <div className="label mb-3">Cover letter</div>
-        <div className="relative bg-[var(--paper-2)] border border-[var(--rule)] px-5 sm:px-10 py-8 sm:py-10">
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--rule-strong)] opacity-40" />
-          {paragraphs(pack.coverLetter.text).length === 0 ? (
-            <p className="text-[var(--ink-3)] italic">No cover letter was returned.</p>
-          ) : (
-            <div className="space-y-4 text-[17px] leading-relaxed max-w-[68ch]">
-              {paragraphs(pack.coverLetter.text).map((p, i) => {
-                const isNew = newParagraphs?.has(p);
-                return (
-                  <p key={i} className={isNew ? "added relative" : ""}>
-                    {isNew && (
-                      <span className="mono text-[10px] tracking-[0.14em] text-[var(--seal)] block mb-1">NEW AFTER REFUSAL</span>
-                    )}
-                    <LetterText text={p} index={index} />
-                  </p>
-                );
-              })}
-            </div>
-          )}
-          <Cites ids={pack.coverLetter.cites} index={index} onFocus={onFocus} missingNote={missingNote} />
-        </div>
+        <div className="label mb-4">Cover letter</div>
+        {paragraphs(pack.coverLetter.text).length === 0 ? (
+          <p className="text-[var(--fg-3)]">No cover letter was returned.</p>
+        ) : (
+          <div className="space-y-5 text-[17px] sm:text-[18px] leading-[1.6] max-w-[66ch] border-l border-[var(--rule-strong)] pl-6">
+            {paragraphs(pack.coverLetter.text).map((p, i) => {
+              const isNew = newParagraphs?.has(p);
+              return (
+                <p key={i} className={isNew ? "added" : ""}>
+                  {isNew && <span className="mono text-[10px] tracking-[0.14em] text-[var(--ice)] block mb-1">NEW AFTER REFUSAL</span>}
+                  <LetterText text={p} index={index} />
+                </p>
+              );
+            })}
+          </div>
+        )}
+        <Cites ids={pack.coverLetter.cites} index={index} onFocus={onFocus} missingNote={missingNote} />
       </section>
 
       {/* checklist */}
       <section className="mt-14">
-        <div className="label mb-3">Documents to bring</div>
-        {pack.checklist.length === 0 && (
-          <p className="fine italic border-t border-[var(--rule-strong)] pt-3">No extra documents listed for this pack yet.</p>
-        )}
-        <ul className={pack.checklist.length ? "border-t border-[var(--rule-strong)]" : ""}>
+        <div className="label mb-4">Documents to bring</div>
+        {pack.checklist.length === 0 && <p className="fine rule-strong pt-3">No extra documents listed for this pack yet.</p>}
+        <ul className={pack.checklist.length ? "rule-strong" : ""}>
           {pack.checklist.map((c) => {
             const isNew = newChecklist?.has(c.item);
+            const done = !!checked[c.item];
             return (
-              <li key={c.item} className={`grid grid-cols-[28px_1fr] gap-3 py-3.5 border-b border-[var(--rule)] ${isNew ? "added" : ""}`}>
+              <li key={c.item} className="grid grid-cols-[28px_1fr] gap-3 py-4 border-b border-[var(--rule)]">
                 <button
                   type="button"
-                  aria-label={checked[c.item] ? "Mark as not ready" : "Mark as ready"}
+                  aria-label={done ? "Mark as not ready" : "Mark as ready"}
                   onClick={() => setChecked((s) => ({ ...s, [c.item]: !s[c.item] }))}
-                  className="w-[20px] h-[20px] mt-0.5 border border-[var(--ink-2)] grid place-items-center cursor-pointer mono text-[13px]"
+                  className="w-[20px] h-[20px] mt-0.5 rounded-full border grid place-items-center cursor-pointer transition-colors"
+                  style={{ borderColor: done ? "var(--ice)" : "var(--rule-strong)", background: done ? "var(--ice)" : "transparent" }}
                 >
-                  {checked[c.item] ? "✓" : ""}
+                  {done && <span className="w-2 h-2 rounded-full bg-[#050506]" />}
                 </button>
                 <div>
-                  <div className="text-[17px] leading-snug">
-                    {isNew && <span className="mono text-[10px] tracking-[0.14em] text-[var(--seal)] mr-2">NEW</span>}
-                    {c.item}
+                  <div className={`text-[17px] leading-snug ${done ? "text-[var(--fg-3)] line-through" : ""}`}>
+                    {isNew && <span className="mono text-[10px] tracking-[0.14em] text-[var(--ice)] mr-2 align-middle">NEW</span>}
+                    <span className={isNew ? "added" : ""}>{c.item}</span>
                   </div>
-                  <div className="text-[14px] text-[var(--ink-2)] mt-0.5">{c.why}</div>
+                  <div className="text-[14px] text-[var(--fg-2)] mt-0.5">{c.why}</div>
                   <Cites ids={c.cites} index={index} onFocus={onFocus} missingNote={missingNote} />
                 </div>
               </li>

@@ -20,11 +20,11 @@ export function fmtLeft(ms: number) {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-/** A dial that drains as the grant runs out. `totalMs` sets the full circle. */
+/** A ring of points that goes out one by one as the grant runs down. `totalMs` sets the full ring. */
 export function Countdown({
   expiresMs,
   totalMs,
-  size = 168,
+  size = 180,
   label = "Access left",
 }: {
   expiresMs: number;
@@ -36,54 +36,39 @@ export function Countdown({
   const left = Math.max(0, expiresMs - now);
   const total = Math.max(totalMs ?? left, 1);
   const frac = Math.min(1, left / total);
-  const r = 52;
-  const c = 2 * Math.PI * r;
   const ended = left <= 0;
   const urgent = !ended && left < 60_000;
-  const color = ended || urgent ? "var(--red)" : "var(--seal)";
+  const color = ended || urgent ? "var(--red)" : "var(--ice)";
+  const DOTS = 60;
+  const lit = Math.ceil(frac * DOTS);
   return (
-    <div className="flex items-center gap-5">
-      <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden className="shrink-0 -rotate-90">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="var(--rule)" strokeWidth="2" />
-        {Array.from({ length: 60 }).map((_, i) => {
-          const a = (i / 60) * Math.PI * 2;
-          const r1 = i % 5 === 0 ? 56 : 58;
+    <div className="flex items-center gap-6">
+      <svg viewBox="0 0 120 120" width={size} height={size} aria-hidden className="shrink-0">
+        {Array.from({ length: DOTS }).map((_, i) => {
+          const a = (i / DOTS) * Math.PI * 2 - Math.PI / 2;
+          const on = i < lit;
           return (
-            <line
+            <circle
               key={i}
-              x1={60 + Math.cos(a) * r1}
-              y1={60 + Math.sin(a) * r1}
-              x2={60 + Math.cos(a) * 60}
-              y2={60 + Math.sin(a) * 60}
-              stroke="var(--rule-strong)"
-              strokeWidth={i % 5 === 0 ? 1.2 : 0.5}
+              cx={60 + Math.cos(a) * 52}
+              cy={60 + Math.sin(a) * 52}
+              r={on ? 2.4 : 1.2}
+              fill={on ? color : "var(--rule-strong)"}
+              style={{ transition: "r .4s, fill .4s" }}
             />
           );
         })}
-        <circle
-          cx="60"
-          cy="60"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="5"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - frac)}
-          style={{ transition: "stroke-dashoffset .25s linear, stroke .3s" }}
-        />
+        <text x="60" y="66" textAnchor="middle" fontSize="19" fontFamily="var(--font-mono)" fill={ended || urgent ? "var(--red)" : "var(--fg)"} className="tnum">
+          {fmtLeft(left)}
+        </text>
       </svg>
       <div>
-        <div className="label">{ended ? "Time is up" : label}</div>
-        <div
-          className={`mono text-[44px] sm:text-[52px] leading-none tabular-nums mt-1 ${urgent ? "tick" : ""}`}
-          style={{ color: ended || urgent ? "var(--red)" : "var(--ink)" }}
-          aria-live="polite"
-        >
+        <div className="label" style={ended ? { color: "var(--red)" } : undefined}>{ended ? "Time is up" : label}</div>
+        <div className={`display text-[40px] sm:text-[48px] tnum mt-1 ${urgent ? "tick" : ""}`} style={{ color: ended || urgent ? "var(--red)" : "var(--fg)" }} aria-live="polite">
           {fmtLeft(left)}
         </div>
-        <div className="fine mt-2">
-          Ends {new Date(expiresMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} by your clock.
-          Sui enforces it by its own.
+        <div className="fine mt-2 max-w-[26ch]">
+          Ends {new Date(expiresMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} by your clock. Sui enforces it by its own.
         </div>
       </div>
     </div>

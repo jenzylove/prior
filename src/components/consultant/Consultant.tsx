@@ -1,10 +1,9 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Pack } from "@/components/ui/types";
 import { decryptShare } from "@/lib/client/share";
-import { api, short, suiObjectUrl, walrusBlobUrl, suiAccountUrl } from "@/components/ui/api";
+import { api, suiObjectUrl, walrusBlobUrl, suiAccountUrl } from "@/components/ui/api";
 import { Countdown, useNow } from "@/components/ui/Countdown";
-import { RedStamp, Seal } from "@/components/ui/Stamp";
 import { PackView } from "@/components/app/PackView";
 
 interface GrantState {
@@ -26,6 +25,15 @@ type Phase =
   | { k: "error"; reason: string };
 
 const EMPTY_INDEX = new Map();
+
+function Row({ k, children }: { k: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 flex-wrap">
+      <dt className="text-[var(--fg-3)] w-[110px] shrink-0">{k}</dt>
+      <dd className="min-w-0 break-id">{children}</dd>
+    </div>
+  );
+}
 
 export default function Consultant({ grantId }: { grantId: string }) {
   const [hash, setHash] = useState<{ k: string; b: string } | null>(null);
@@ -81,82 +89,58 @@ export default function Consultant({ grantId }: { grantId: string }) {
     if (expired && phase.k === "open") setPhase({ k: "ended" });
   }, [expired, phase.k]);
 
+  const ended = phase.k === "ended" || phase.k === "denied";
+
   return (
-    <main className="mx-auto max-w-[1180px] px-4 sm:px-8 pb-20">
-      <div className="pt-8 sm:pt-12 grid gap-8 md:grid-cols-[1fr_auto] items-end">
+    <main className="mx-auto max-w-[1200px] px-4 sm:px-8 pb-24">
+      <div className="pt-10 sm:pt-16 grid gap-10 md:grid-cols-[1fr_auto] items-end">
         <div>
-          <div className="label">Consultant view · read only</div>
-          <h1 className="display text-[48px] sm:text-[76px] mt-2">A pack, shared for minutes.</h1>
-          <p className="mt-3 text-[17px] text-[var(--ink-2)] max-w-[60ch]">
-            The pack is decrypted here in your browser. The Seal key servers check a policy on Sui before every read, and they
-            stop releasing the key when the Sui clock passes the end time or the applicant revokes.
+          <div className="label">Shared with you · read only</div>
+          <h1 className="display display-tight text-[44px] sm:text-[72px] mt-3">
+            {ended ? <span className="text-[var(--red)]">Access ended.</span> : <>A pack, shared for minutes.</>}
+          </h1>
+          <p className="mt-4 text-[17px] sm:text-[18px] text-[var(--fg-2)] max-w-[58ch]">
+            The pack is decrypted here in your browser. The Seal key servers check a policy on Sui before every read, and they stop
+            releasing the key when the Sui clock passes the end time or the applicant revokes.
           </p>
         </div>
         <div className="min-w-0">
           {grant && !grant.revoked && grant.live ? (
-            <Countdown expiresMs={grant.expiresMs} size={132} />
-          ) : grant?.revoked ? (
-            <RedStamp rot={-6} className="text-[20px]">Revoked</RedStamp>
+            <Countdown expiresMs={grant.expiresMs} size={140} />
           ) : grant ? (
-            <RedStamp rot={-6} className="text-[20px]">Expired</RedStamp>
+            <div>
+              <div className="label" style={{ color: "var(--red)" }}>{grant.revoked ? "Revoked by the applicant" : "Time is up"}</div>
+              <div className="display text-[40px] text-[var(--red)] mt-1 tnum">00:00</div>
+            </div>
           ) : grantErr ? (
-            <p className="mono text-[12px] text-[var(--red)] max-w-[36ch]">{grantErr}</p>
+            <p className="text-[13px] text-[var(--red)] max-w-[36ch]">{grantErr}</p>
           ) : (
-            <p className="mono text-[12px] text-[var(--ink-3)] typing">Reading the grant from Sui</p>
+            <p className="text-[13px] text-[var(--fg-3)] typing">Reading the grant from Sui</p>
           )}
         </div>
       </div>
 
-      {/* chain facts */}
-      <div className="mt-8 border-y border-[var(--rule-strong)] py-3 flex flex-wrap gap-x-8 gap-y-1.5 mono text-[11.5px]">
-        <span>
-          <span className="text-[var(--ink-3)]">Grant </span>
-          <a className="link-u" href={suiObjectUrl(grantId)} target="_blank" rel="noreferrer">{short(grantId, 10, 6)}</a>
-        </span>
-        {hash?.b && (
-          <span>
-            <span className="text-[var(--ink-3)]">Sealed pack </span>
-            <a className="link-u" href={walrusBlobUrl(hash.b)} target="_blank" rel="noreferrer">{short(hash.b, 10, 6)}</a>
-          </span>
-        )}
-        {grant?.consultant && (
-          <span>
-            <span className="text-[var(--ink-3)]">Your key </span>
-            <a className="link-u" href={suiAccountUrl(grant.consultant)} target="_blank" rel="noreferrer">{short(grant.consultant)}</a>
-          </span>
-        )}
-        {grant && (
-          <span>
-            <span className="text-[var(--ink-3)]">Status </span>
-            <span style={{ color: grant.revoked || !grant.live ? "var(--red)" : "var(--seal)" }}>
-              {grant.revoked ? "revoked" : grant.live ? "live" : "expired"}
-            </span>
-            {grant.readVia && <span className="text-[var(--ink-3)]"> · {grant.readVia}</span>}
-          </span>
-        )}
-      </div>
+      <div className="rule-strong mt-10" />
 
       <div className="mt-10">
         {(phase.k === "idle" || phase.k === "opening") && (
-          <div className="flex items-center gap-6 py-10">
-            <span className="stamp-pending inline-block">
-              <Seal size={86} animate={false} center="P" />
-            </span>
-            <div className="mono text-[13px] space-y-1.5 text-[var(--ink-2)]">
-              <div className="typing">Downloading the sealed pack from Walrus, asking the Seal key servers</div>
-              <div className="fine">The key servers check the grant against the Sui clock. This takes a few seconds.</div>
+          <div className="py-12">
+            <div className="flex gap-1.5 mb-5" aria-hidden>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <span key={i} className="w-2 h-2 rounded-full bg-[var(--ice)] pulse-ice" style={{ animationDelay: `${i * 100}ms` }} />
+              ))}
             </div>
+            <p className="text-[19px] typing">Downloading the sealed pack from Walrus, asking the Seal key servers</p>
+            <p className="fine mt-2">The key servers check the grant against the Sui clock. This takes a few seconds.</p>
           </div>
         )}
 
         {phase.k === "open" && (
           <>
-            <div className="flex items-center gap-4 mb-6">
-              <Seal size={70} center="P" sub="OPENED" rot={-10} />
-              <p className="text-[16px] text-[var(--ink-2)]">
-                Decrypted at {new Date(phase.at).toLocaleTimeString()}. Citations point to facts in the applicant&apos;s own file.
-              </p>
-            </div>
+            <p className="text-[15px] text-[var(--fg-2)] mb-8">
+              <span className="inline-block w-2 h-2 rounded-full bg-[var(--ice)] mr-2 align-middle" />
+              Decrypted at {new Date(phase.at).toLocaleTimeString()}. Citations point to facts in the applicant&apos;s own sealed file.
+            </p>
             <PackView
               pack={phase.pack}
               index={EMPTY_INDEX}
@@ -165,35 +149,54 @@ export default function Consultant({ grantId }: { grantId: string }) {
           </>
         )}
 
-        {(phase.k === "ended" || phase.k === "denied") && (
-          <div className="py-14 text-center rise">
-            <RedStamp rot={-8} className="text-[26px] sm:text-[34px]">Access ended</RedStamp>
-            <h2 className="display text-[40px] sm:text-[60px] mt-10 max-w-[18ch] mx-auto">
+        {ended && (
+          <div className="py-16 rise">
+            <h2 className="display text-[36px] sm:text-[56px] max-w-[20ch]">
               {phase.k === "ended" ? "Time is up. The pack is gone from this page." : "The key servers said no."}
             </h2>
-            <p className="mt-4 text-[17px] text-[var(--ink-2)] max-w-[56ch] mx-auto">
+            <p className="mt-5 text-[17px] text-[var(--fg-2)] max-w-[56ch]">
               {phase.k === "ended"
                 ? "The grant on Sui has expired or was revoked. Try again and Seal will be asked for the key a second time; it should refuse."
                 : phase.reason}
             </p>
             {phase.k === "denied" && attempts > 0 && (
-              <p className="mono text-[11px] text-[var(--ink-3)] mt-3">Attempt {attempts} · answer from Seal at {new Date().toLocaleTimeString()}</p>
+              <p className="mono text-[11px] text-[var(--fg-3)] mt-3">Attempt {attempts} · answer from Seal at {new Date().toLocaleTimeString()}</p>
             )}
             <button className="btn btn-ghost mt-8" onClick={() => void open()}>Try again</button>
-            <p className="fine mt-6 max-w-[52ch] mx-auto">
-              What was already read stays read. Expiry and revoke stop new reads; no system can make anyone unsee a page.
-            </p>
+            <p className="fine mt-6 max-w-[52ch]">What was already read stays read. Expiry and revoke stop new reads; no system can make anyone unsee a page.</p>
           </div>
         )}
 
         {phase.k === "error" && (
           <div className="py-12">
             <div className="label" style={{ color: "var(--red)" }}>Could not open this pack</div>
-            <p className="mono text-[13px] text-[var(--red)] mt-2 break-words max-w-[80ch]">{phase.reason}</p>
+            <p className="text-[15px] text-[var(--red)] mt-2 break-words max-w-[80ch]">{phase.reason}</p>
             <button className="btn btn-ghost mt-6" onClick={() => void open()}>Try again</button>
           </div>
         )}
       </div>
+
+      <details className="acc mt-14 group">
+        <summary className="label cursor-pointer inline-flex items-center gap-2 hover:text-[var(--fg)] transition-colors">
+          <span className="inline-block transition-transform group-open:rotate-90" aria-hidden>›</span>
+          Onchain details
+        </summary>
+        <div className="acc-body">
+          <div>
+            <dl className="mt-3 mono text-[12px] space-y-1.5 text-[var(--fg-2)]">
+              <Row k="Grant"><a className="link-u" href={suiObjectUrl(grantId)} target="_blank" rel="noreferrer">{grantId}</a></Row>
+              {hash?.b && <Row k="Sealed pack"><a className="link-u" href={walrusBlobUrl(hash.b)} target="_blank" rel="noreferrer">{hash.b}</a></Row>}
+              {grant?.consultant && <Row k="Your key"><a className="link-u" href={suiAccountUrl(grant.consultant)} target="_blank" rel="noreferrer">{grant.consultant}</a></Row>}
+              {grant && (
+                <Row k="Status">
+                  <span style={{ color: grant.revoked || !grant.live ? "var(--red)" : "var(--ice)" }}>{grant.revoked ? "revoked" : grant.live ? "live" : "expired"}</span>
+                  {grant.readVia && <span className="text-[var(--fg-3)]"> · read via {grant.readVia}</span>}
+                </Row>
+              )}
+            </dl>
+          </div>
+        </div>
+      </details>
     </main>
   );
 }

@@ -17,11 +17,13 @@
     "@mysten/sui": "^2.39.1",
     "@mysten/walrus": "^1.2.39",
     "@suimpp/mpp": "^0.9.0",
+    "@types/three": "^0.187.0",
     "mppx": "^0.4.12",
     "next": "15.5",
     "react": "19.1",
     "react-dom": "19.1",
     "server-only": "^0.0.1",
+    "three": "^0.187.0",
     "viem": "^2.57.17",
     "zod": "^4.6.7"
   },

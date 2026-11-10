@@ -13,6 +13,43 @@ function cid(parts: string[]): string {
   return 'c_' + parts.join('_').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 48);
 }
 
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/** Read a month from loose text: "March 2019", "Mar 2019", "2019-03", "03/2019". */
+export function looseMonth(s?: string): string | undefined {
+  if (!s) return undefined;
+  const t = s.toLowerCase();
+  const iso = /(\d{4})-(\d{1,2})/.exec(t);
+  if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}`;
+  const slash = /\b(\d{1,2})\/(\d{4})\b/.exec(t);
+  if (slash) return `${slash[2]}-${slash[1].padStart(2, '0')}`;
+  const named = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{4})\b/.exec(t);
+  if (named) return `${named[2]}-${String(MONTHS.indexOf(named[1]) + 1).padStart(2, '0')}`;
+  return undefined;
+}
+
+/**
+ * Past form answers about a job ("When did you start your current job?" answered "March 2019")
+ * become filed job claims, so they are checked against the history like any other filing.
+ */
+function jobClaimsFromFormAnswers(facts: Fact[], historyJobs: Fact[]): Fact[] {
+  const out: Fact[] = [];
+  for (const f of facts) {
+    if (f.source !== 'past_form' || f.kind !== 'application') continue;
+    const q = (f.fields.formQuestion ?? '').toLowerCase();
+    const said = `${f.fields.answeredValue ?? ''} ${f.text}`;
+    if (!/start|began|since|employ|job|work/.test(q + ' ' + f.text.toLowerCase())) continue;
+    const month = looseMonth(f.fields.answeredValue) ?? looseMonth(f.text);
+    if (!month) continue;
+    const employer = f.fields.employer ?? historyJobs.find(j => j.fields.employer && said.toLowerCase().includes(norm(j.fields.employer).split(' ')[0]))?.fields.employer
+      ?? historyJobs.find(j => !j.fields.end)?.fields.employer;
+    if (!employer) continue;
+    const isEnd = /left|end|until|finish/.test(q);
+    out.push({ ...f, kind: 'employment', fields: { ...f.fields, employer, [isEnd ? 'end' : 'start']: month } });
+  }
+  return out;
+}
+
 /**
  * Find contradictions an officer would see: between what you filed before and what
  * your history says now, between facts in your history, and between a draft and the file.
@@ -22,7 +59,7 @@ export function findContradictions(facts: Fact[], answers: Answer[] = [], now: D
   const nowM = nowMonth(now);
   const jobs = facts.filter(f => f.kind === 'employment');
   const historyJobs = jobs.filter(f => f.source !== 'past_form');
-  const filedJobs = jobs.filter(f => f.source === 'past_form');
+  const filedJobs = [...jobs.filter(f => f.source === 'past_form'), ...jobClaimsFromFormAnswers(facts, historyJobs)];
 
   // 1. A past form stated a different start or end date for the same employer.
   for (const filed of filedJobs) {

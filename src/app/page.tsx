@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { Masthead, Footer } from "@/components/ui/Chrome";
-import { Seal, RedStamp } from "@/components/ui/Stamp";
+import { Reveal } from "@/components/ui/Reveal";
+import Hero from "@/components/landing/Hero";
+import { Steps } from "@/components/landing/Steps";
+import { FAQ } from "@/components/landing/FAQ";
 
 const SOURCES = {
   mappr: "https://www.mappr.co/?p=72448",
-  africanews: "https://www.africanews.com/2025/05/26/visa-denied-african-travellers-hit-hard-by-soaring-schengen-rejections/",
   lawyer: "https://thenigerialawyer.com/1-34m-nigerian-visa-applications-rejected-uk-refusals-hit-21-year-high-as-nigeria-ranks-second-globally/",
   guardian: "https://krdo.com/news/2025/05/21/africans-lost-nearly-70m-to-denied-visas-applications-to-europe-in-2024/",
 };
 
 function Src({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="link-u mono text-[11px] tracking-[0.06em] text-[var(--ink-3)]">
+    <a href={href} target="_blank" rel="noreferrer" className="link-u mono text-[11px] tracking-[0.06em] text-[var(--fg-3)]">
       {children}
     </a>
   );
@@ -23,31 +25,31 @@ function Section({
   kicker,
   title,
   children,
+  wide,
 }: {
   n: string;
   id?: string;
   kicker: string;
   title: React.ReactNode;
   children: React.ReactNode;
+  wide?: boolean;
 }) {
   return (
-    <section id={id} className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-24 sm:pt-32 scroll-mt-8">
-      <div className="rule-strong mb-6" />
-      <div className="grid gap-6 md:grid-cols-[180px_1fr]">
-        <div className="flex md:flex-col items-baseline md:items-start gap-4">
-          <div className="display text-[72px] md:text-[112px] leading-[0.8] text-[var(--ink-3)]">{n}</div>
-          <div className="label">{kicker}</div>
+    <section id={id} className="mx-auto max-w-[1200px] px-4 sm:px-8 pt-28 sm:pt-40 scroll-mt-10">
+      <Reveal>
+        <div className="flex items-baseline gap-4 mb-8">
+          <span className="mono text-[13px] text-[var(--ice)]">{n}</span>
+          <span className="label">{kicker}</span>
+          <span className="flex-1 rule self-center" />
         </div>
-        <div>
-          <h2 className="display text-[44px] sm:text-[64px] max-w-[18ch]">{title}</h2>
-          <div className="mt-8">{children}</div>
-        </div>
-      </div>
+        <h2 className={`display text-[38px] sm:text-[60px] lg:text-[72px] ${wide ? "max-w-[22ch]" : "max-w-[16ch]"}`}>{title}</h2>
+      </Reveal>
+      <div className="mt-12 sm:mt-16">{children}</div>
     </section>
   );
 }
 
-const FAQ: { q: string; a: React.ReactNode }[] = [
+const FAQ_ITEMS = [
   {
     q: "Is this legal advice?",
     a: "No. Prior is guidance. It drafts answers from your own record and points out where they disagree. You read every answer, you decide, and you submit the form yourself. Prior never touches a government portal, the visa fee or your appointment.",
@@ -85,310 +87,201 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
 export default function Home() {
   return (
     <>
-      <Masthead here="home" />
+      <Masthead here="home" onDark />
+      <Hero />
 
-      {/* ── Hero: the dossier cover ─────────────────────────────── */}
-      <section className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-10 sm:pt-16 overflow-x-clip">
-        <div className="flex flex-wrap items-center justify-between gap-3 label mb-10">
-          <span>Case file · Repeat applicants</span>
-          <span className="hidden sm:inline">Form P 1 · Memory of record</span>
-        </div>
-
-        <div className="grid gap-12 lg:grid-cols-[1.25fr_1fr] items-start">
-          <div className="rise">
-            <h1 className="display text-[56px] sm:text-[92px] lg:text-[112px]">
-              The officer remembers your last application.{" "}
-              <em className="text-[var(--red)]">Do you?</em>
-            </h1>
-            <p className="mt-8 text-[20px] sm:text-[23px] leading-snug text-[var(--ink-2)] max-w-[34ch]">
-              Prior is a visa agent that remembers every application you have filed, and writes your next one to match
-              your history and answer what got you refused.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center gap-6">
-              <Link href="/app" className="btn">
-                Start your file <span aria-hidden>→</span>
-              </Link>
-              <span className="display italic text-[22px] text-[var(--ink-2)]">
-                The officer remembers your priors. Now you do too.
-              </span>
-            </div>
-          </div>
-
-          {/* specimen sheet */}
-          <div className="relative rise" style={{ animationDelay: ".15s" }} aria-hidden>
-            <div className="absolute inset-0 translate-x-3 translate-y-3 rotate-[2.2deg] bg-[var(--paper-3)]" />
-            <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rotate-[1deg] bg-[var(--paper-2)] border border-[var(--rule)]" />
-            <div className="relative bg-[var(--paper)] border border-[var(--rule-strong)] p-6 sm:p-8 -rotate-[0.6deg]">
-              <div className="flex justify-between label">
-                <span>Visitor application</span>
-                <span>Specimen</span>
+      {/* the numbers, sourced */}
+      <section className="mx-auto max-w-[1200px] px-4 sm:px-8 pt-24 sm:pt-32">
+        <Reveal>
+          <div className="label mb-6">The numbers behind it</div>
+        </Reveal>
+        <div className="rule-strong">
+          {[
+            {
+              n: "47.9%",
+              red: true,
+              t: "of Nigerian applicants were refused a Schengen visa in 2025, against 14.6% of applicants worldwide.",
+              s: <Src href={SOURCES.mappr}>Mappr, from European Commission data</Src>,
+            },
+            {
+              n: "66,143",
+              t: "Nigerian visitor visas refused by the UK in 2025. A refusal rate of 38.6%.",
+              s: <Src href={SOURCES.lawyer}>The Nigeria Lawyer</Src>,
+            },
+            {
+              n: "$70M",
+              t: "Close to that much was lost by African applicants on Schengen fees for refused visas in 2024. The fee is not refunded.",
+              s: <Src href={SOURCES.guardian}>CNN, LAGO Collective data</Src>,
+            },
+          ].map((x, i) => (
+            <Reveal key={x.n} delay={i * 80} className="grid gap-3 sm:grid-cols-[260px_1fr] items-baseline py-8 border-b border-[var(--rule)]">
+              <div className="display display-tight text-[64px] sm:text-[84px]" style={x.red ? { color: "var(--red)" } : undefined}>{x.n}</div>
+              <div>
+                <p className="text-[18px] sm:text-[20px] max-w-[52ch]">{x.t}</p>
+                <div className="mt-2">{x.s}</div>
               </div>
-              <div className="rule-double my-4" />
-              {[
-                ["Employer", "Lagos Freight Ltd"],
-                ["Employed since", "March 2018"],
-                ["Previous refusals", "None"],
-                ["Funds available", "Statement attached"],
-              ].map(([k, v], i) => (
-                <div key={k} className="py-2.5 border-b border-[var(--rule)] grid grid-cols-[1fr_1.1fr] gap-3">
-                  <span className="label !normal-case !tracking-normal !text-[13px]">{k}</span>
-                  <span className={`mono text-[14px] ${i === 2 ? "strike-red" : ""}`}>{v}</span>
-                </div>
-              ))}
-              <div className="mt-4 margin-note">Refused 2023. You did not say so.</div>
-              <div className="absolute -top-6 -right-3 sm:-right-8">
-                <RedStamp rot={9}>Refused</RedStamp>
-              </div>
-              <div className="absolute -bottom-10 right-4 sm:right-10">
-                <Seal size={104} sub="ON FILE" rot={-16} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* facts on file */}
-        <div className="mt-24 sm:mt-28">
-          <div className="flex items-baseline justify-between gap-4 mb-2">
-            <span className="label">Exhibit A · The numbers</span>
-            <span className="label hidden sm:inline">Sources under each line</span>
-          </div>
-          <div className="rule-strong" />
-          <div className="grid md:grid-cols-3">
-            <div className="py-7 md:pr-8 border-b md:border-b-0 md:border-r border-[var(--rule)]">
-              <div className="display text-[76px] leading-none text-[var(--red)]">47.9%</div>
-              <p className="mt-3 text-[17px]">
-                of Nigerian applicants were refused a Schengen visa in 2025, against 14.6% of applicants worldwide.
-              </p>
-              <div className="mt-3 flex gap-3 flex-wrap">
-                <Src href={SOURCES.mappr}>Mappr, from European Commission data</Src>
-              </div>
-            </div>
-            <div className="py-7 md:px-8 border-b md:border-b-0 md:border-r border-[var(--rule)]">
-              <div className="display text-[76px] leading-none">66,143</div>
-              <p className="mt-3 text-[17px]">
-                Nigerian visitor visas refused by the UK in 2025. A refusal rate of 38.6%.
-              </p>
-              <div className="mt-3">
-                <Src href={SOURCES.lawyer}>The Nigeria Lawyer</Src>
-              </div>
-            </div>
-            <div className="py-7 md:pl-8">
-              <div className="display text-[76px] leading-none">$70M</div>
-              <p className="mt-3 text-[17px]">
-                Close to that much was lost by African applicants on Schengen fees for refused visas in 2024. The fee is not
-                refunded.
-              </p>
-              <div className="mt-3">
-                <Src href={SOURCES.guardian}>CNN, LAGO Collective data</Src>
-              </div>
-            </div>
-          </div>
-          <div className="rule-strong" />
+            </Reveal>
+          ))}
         </div>
       </section>
 
-      {/* ── 01 The problem ─────────────────────────────────────── */}
-      <Section
-        n="01"
-        kicker="The problem"
-        title={
-          <>
-            Refusals are not a documents problem. They are a <em>memory</em> problem.
-          </>
-        }
-      >
-        <div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
-          <div className="space-y-5 text-[19px] text-[var(--ink-2)] max-w-[52ch]">
+      {/* 01 the problem */}
+      <Section n="01" kicker="The problem" title={<>Refusals are not a documents problem. They are a <span className="text-[var(--red)]">memory</span> problem.</>}>
+        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
+          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
             <p>
               The officer has every form you ever filed. When a new application lands, it is checked against your prior
               applications, your travel history and the employment dates you gave last time.
             </p>
             <p>
-              You do not have those forms. So the start date drifts by a few months, a trip is forgotten, and an old
-              refusal is left off the disclosure question. To an officer, inconsistency reads as a credibility problem,
-              and failing to mention a past UK refusal can be treated as deception.
+              You do not have those forms. So a start date drifts by a few months, a trip is forgotten, and an old refusal
+              is left off the disclosure question. To an officer, inconsistency reads as a credibility problem, and leaving
+              out a past UK refusal can be treated as deception.
             </p>
-            <p className="text-[var(--ink)]">
-              A generic AI draft cannot fix this. It does not know what you wrote in 2021 or why you were refused in
-              2023. Prior does.
+            <p className="text-[var(--fg)]">
+              A generic AI draft cannot fix this. It does not know what you wrote in 2021 or why you were refused in 2023.
+              Prior does, because it kept it.
             </p>
-          </div>
+          </Reveal>
 
-          {/* two filings, one contradiction */}
-          <div className="relative" aria-label="Example of two filings that disagree">
-            <div className="label mb-3">Example · two filings, one contradiction</div>
-            <div className="grid grid-cols-2 gap-0 border-y border-[var(--rule-strong)]">
+          {/* one contradiction, as the app shows it */}
+          <Reveal delay={120}>
+            <div className="label mb-5">What a contradiction looks like in Prior</div>
+            <div className="rule-strong">
               {[
-                { y: "Filed 2021", rows: [["Employer", "Lagos Freight"], ["Since", "03 / 2018"], ["Refused before", "No"]] },
-                { y: "Drafted 2026", rows: [["Employer", "Lagos Freight"], ["Since", "06 / 2018"], ["Refused before", "No"]] },
-              ].map((f, col) => (
-                <div key={f.y} className={`p-4 sm:p-5 ${col === 0 ? "border-r border-[var(--rule)]" : ""}`}>
-                  <div className="label mb-3">{f.y}</div>
-                  {f.rows.map(([k, v], i) => (
-                    <div key={k} className="py-2 border-b border-[var(--rule)] last:border-0">
-                      <div className="fine">{k}</div>
-                      <div
-                        className={`mono text-[15px] inline-block ${
-                          i === 1 && col === 1 ? "px-1 -mx-1 outline outline-2 outline-[var(--red)] rounded-[50%]" : ""
-                        }`}
-                      >
-                        {v}
-                      </div>
-                    </div>
-                  ))}
+                ["You said, Schengen form, 2024", "No previous visa refusals"],
+                ["Your history says", "UK Standard Visitor visa refused on 2 April 2023"],
+              ].map(([k, v]) => (
+                <div key={k as string} className="py-4 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
+                  <span className="label pt-1">{k}</span>
+                  <span className="text-[17px]">{v}</span>
                 </div>
               ))}
+              <div className="py-4 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
+                <span className="label pt-1 !text-[var(--red)]">Flagged</span>
+                <span className="text-[17px]">
+                  <span className="text-[var(--red)] font-medium">A form you filed on 2024-02-10 said no previous refusals, but you were refused on 2023-04-02.</span>{" "}
+                  <span className="text-[var(--fg-2)]">The disclosure question in the new pack is answered Yes, with the date, and the refusal is cited.</span>
+                </span>
+              </div>
             </div>
-            <p className="margin-note mt-5 max-w-[34ch]">
-              Three months apart. The officer will see it. Prior catches it first and tells you the fix.
-            </p>
-          </div>
+            <p className="fine mt-4 max-w-[44ch]">This is a real flag from our test history, word for word. The officer would have seen it. Prior shows it to you first.</p>
+          </Reveal>
         </div>
       </Section>
 
-      {/* ── 02 How it works ────────────────────────────────────── */}
-      <Section n="02" id="how" kicker="How it works" title="One file. Every application after it agrees with it.">
-        <ol className="border-t border-[var(--rule-strong)]">
-          {[
-            {
-              t: "Tell it your history",
-              d: "Paste your travel, jobs, addresses and past applications in plain words, or drop in a text file. A refusal letter works too.",
-            },
-            {
-              t: "It becomes sealed facts on Walrus",
-              d: "Prior breaks your history into dated facts, one sentence each. Every fact is sealed with Seal and stored on Walrus Memory on Sui mainnet. You see the blob ID for each.",
-              seal: true,
-            },
-            {
-              t: "Pick a trip, get a cited pack",
-              d: "UK Visitor, Schengen or the US DS 160. Every answer is drafted from your record and cites the fact it came from. Contradictions with what you filed before are flagged in red, with the fix.",
-            },
-            {
-              t: "A refusal becomes a lesson",
-              d: "Paste the refusal letter. Each reason becomes a lesson in your file, and the next pack changes because of it: new documents, a new paragraph, the refusal disclosed.",
-              red: true,
-            },
-            {
-              t: "Share with a consultant, for minutes",
-              d: "Give a consultant a link that works for as long as you choose. Access ends on the Sui clock without you doing anything, or earlier if you revoke.",
-            },
-          ].map((s, i) => (
-            <li key={s.t} className="grid grid-cols-[48px_1fr] sm:grid-cols-[80px_1fr_120px] gap-4 py-7 border-b border-[var(--rule)] items-start">
-              <span className="mono text-[13px] text-[var(--ink-3)] pt-2">{["i", "ii", "iii", "iv", "v"][i]}.</span>
-              <div>
-                <h3 className="display text-[30px] sm:text-[36px] leading-tight">{s.t}</h3>
-                <p className="mt-2 text-[17px] text-[var(--ink-2)] max-w-[58ch]">{s.d}</p>
+      {/* 02 what you will do */}
+      <Section n="02" id="how" kicker="What you will do" title="Six things. About a minute, then your file outlives the app." wide>
+        <Steps />
+      </Section>
+
+      {/* 03 it learns */}
+      <Section n="03" kicker="It learns" title="Paste the letter that refused you. Watch the next pack change.">
+        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
+          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
+            <p>
+              A refusal letter lists reasons: funds not shown to be yours, ties to home not shown, purpose unclear. Prior reads
+              each reason and writes it into your file as a lesson, sealed like every other fact.
+            </p>
+            <p>
+              Then it redrafts. The pack you see afterwards is built to answer those reasons, and the app shows you exactly what
+              moved: documents added, paragraphs added, answers that changed, each pointing at the lesson that caused it.
+            </p>
+          </Reveal>
+          <Reveal delay={120} className="rule-strong">
+            {[
+              ["Reason in the letter", "Not satisfied the funds are genuinely available to you"],
+              ["Lesson on file", "Lesson from United Kingdom refusal on 2023-04-02: prove funds clearly."],
+              ["Change in the pack", "Added to documents: a short note explaining any large deposit in the last three months"],
+            ].map(([k, v], i) => (
+              <div key={k} className="py-5 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
+                <span className="label pt-1" style={i === 2 ? { color: "var(--ice)" } : undefined}>{k}</span>
+                <span className="text-[17px]">{v}</span>
               </div>
-              <div className="hidden sm:flex justify-end">
-                {s.seal && <Seal size={84} animate={false} rot={-10} />}
-                {s.red && <RedStamp animate={false} rot={-8}>Lesson</RedStamp>}
-              </div>
-            </li>
-          ))}
-        </ol>
-        <div className="mt-10 flex flex-wrap items-center gap-5">
-          <Link href="/app" className="btn">
-            Try it with your own history <span aria-hidden>→</span>
-          </Link>
-          <span className="fine max-w-[40ch]">About a minute from paste to a cited pack. Sealing each fact on mainnet takes around twenty seconds.</span>
+            ))}
+            <p className="fine mt-4 max-w-[44ch]">From our test refusal letter, word for word. Your own letter produces your own lessons.</p>
+          </Reveal>
         </div>
       </Section>
 
-      {/* ── 03 Privacy ─────────────────────────────────────────── */}
-      <Section n="03" kicker="Privacy" title="What is stored, who sees what, and what we cannot promise.">
-        <dl className="grid md:grid-cols-2 gap-x-12 border-t border-[var(--rule-strong)]">
-          {[
-            ["Stored", "Your facts are stored on Walrus as Seal ciphertext. Only a key registered on the Walrus Memory account can decrypt them. For demo files that key is Prior's own, so keep your file id private."],
-            ["Seen briefly", "The memory relayer sees the text for a moment to make a search vector. The drafting model sees your history to write answers. Neither stores it."],
-            ["Where files live", "Demo files sit under Prior's Walrus Memory account on Sui mainnet. Each file is its own namespace, so yours never mixes with anyone else's."],
-            ["Consultant access", "Ends on the Sui clock for new reads. Anything a consultant already opened stays opened. That is how encryption works everywhere, and we say it plainly."],
-            ["Not legal advice", "Prior drafts, cites and flags. You review and submit. It never files anything for you."],
-            ["Not guessed", "If your record does not say it, the answer is marked as needing your input. Prior does not invent dates."],
-          ].map(([k, v]) => (
-            <div key={k} className="py-6 border-b border-[var(--rule)] grid grid-cols-[130px_1fr] gap-4">
-              <dt className="label pt-1.5">{k}</dt>
-              <dd className="text-[17px] text-[var(--ink-2)]">{v}</dd>
-            </div>
-          ))}
-        </dl>
+      {/* 04 share */}
+      <Section n="04" kicker="Share for minutes" title="A consultant gets a link that stops working by itself.">
+        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
+          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
+            <p>
+              You choose the minutes. The pack is sealed to a policy on Sui, and the Seal key servers check the Sui clock before
+              every read. When the time passes, they refuse. You can also revoke early.
+            </p>
+            <p>
+              What a consultant already opened stays opened. No system can make someone unsee a page, and Prior says so in the
+              app instead of pretending otherwise.
+            </p>
+          </Reveal>
+          <Reveal delay={120} className="rule-strong">
+            {[
+              ["You pick", "5, 10, 30 or 60 minutes"],
+              ["Sui enforces", "Expiry on the Sui clock, checked on every read"],
+              ["Consultant sees", "The pack, a live countdown, then Access ended"],
+              ["You can", "Revoke early, in one transaction"],
+            ].map(([k, v]) => (
+              <div key={k} className="py-5 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
+                <span className="label pt-1">{k}</span>
+                <span className="text-[17px]">{v}</span>
+              </div>
+            ))}
+          </Reveal>
+        </div>
       </Section>
 
-      {/* ── 04 For agents ──────────────────────────────────────── */}
-      <Section n="04" kicker="For agents" title="Any agent can buy a pack. It pays in USDC on Sui.">
-        <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] items-start">
-          <div className="space-y-5 text-[18px] text-[var(--ink-2)] max-w-[48ch]">
+      {/* 05 survives and agents */}
+      <Section n="05" kicker="It survives us" title="Your file lives on Walrus, not in our database.">
+        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
+          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
             <p>
-              Travel agents, assistants and booking bots can ask Prior for a pack built from a user&apos;s file. The endpoint
-              answers with a payment request over MPP. The agent pays 0.05 USDC on Sui mainnet, the payment is checked
-              onchain through Tatum, and the pack comes back.
+              The app proves it on purpose. Wipe the copy on your device, press Restore, and every fact comes back from Walrus,
+              decrypted in front of you. If Prior disappeared tomorrow, your history would not.
             </p>
             <p>
-              No accounts, no API keys to hand out. The receipt is a Sui transaction anyone can look up.
+              Agents can use it too. A travel agent or booking bot asks Prior for a pack, gets a payment request over MPP, pays
+              0.05 USDC on Sui mainnet, and the pack comes back. The payment is checked onchain through Tatum. No accounts, no
+              keys to hand out.
             </p>
-            <Link href="/proof" className="link-u text-[var(--ink)]">See the payments on the proof page</Link>
-          </div>
-          <pre className="mono text-[13px] leading-[1.75] overflow-x-auto bg-[var(--paper-2)] border-l-2 border-[var(--seal)] p-5 sm:p-6 max-w-full">
+            <Link href="/proof" className="link-u text-[var(--fg)] inline-block">See the live record on the proof page</Link>
+          </Reveal>
+          <Reveal delay={120}>
+            <div className="label mb-5">What an agent sees</div>
+            <pre className="mono text-[13px] leading-[1.8] overflow-x-auto border-l-2 border-[var(--ice)] pl-5 text-[var(--fg-2)]">
 {`GET /api/agent/pack
 ← 402 Payment Required
-  method   mpp · sui mainnet
+  method   mpp, sui mainnet
   amount   0.05 USDC
 
-pay  → Sui transaction
-       verified through Tatum
+pay → Sui transaction, verified through Tatum
 
-GET /api/agent/pack   (with receipt)
+GET /api/agent/pack  (with receipt)
 ← 200  { pack }`}
-          </pre>
+            </pre>
+          </Reveal>
         </div>
       </Section>
 
-      {/* ── 05 Proof ───────────────────────────────────────────── */}
-      <Section n="05" kicker="Proof" title="Every claim about the product has a record on Sui mainnet.">
-        <div className="grid gap-8 md:grid-cols-[1fr_auto] items-end">
-          <p className="text-[18px] text-[var(--ink-2)] max-w-[56ch]">
-            The proof page reads live from Sui mainnet through Tatum: the Walrus Memory account and its delegate keys,
-            consultant grants and when they expire, agent payments, and how many memories are on file. Nothing on it is
-            typed in by hand.
-          </p>
-          <Link href="/proof" className="btn btn-ghost">
-            Open the live record <span aria-hidden>→</span>
+      {/* FAQ */}
+      <Section n="06" id="faq" kicker="Questions" title="Asked at the window.">
+        <Reveal>
+          <FAQ items={FAQ_ITEMS} />
+        </Reveal>
+      </Section>
+
+      {/* closing */}
+      <section className="mx-auto max-w-[1200px] px-4 sm:px-8 pt-32 sm:pt-44">
+        <Reveal className="text-center">
+          <h2 className="display display-tight text-[44px] sm:text-[80px] lg:text-[96px] max-w-[14ch] mx-auto">
+            Next time, walk in with the same story you told last time.
+          </h2>
+          <Link href="/app" className="btn mt-12 !px-8 !py-4 !text-[17px]">
+            Start your file <span className="arrow" aria-hidden>→</span>
           </Link>
-        </div>
-      </Section>
-
-      {/* ── FAQ ────────────────────────────────────────────────── */}
-      <section id="faq" className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-24 sm:pt-32 scroll-mt-8">
-        <div className="rule-strong mb-6" />
-        <div className="grid gap-6 md:grid-cols-[180px_1fr]">
-          <div className="label">Questions</div>
-          <div>
-            <h2 className="display text-[44px] sm:text-[64px]">Asked at the window</h2>
-            <div className="mt-8 border-t border-[var(--rule-strong)]">
-              {FAQ.map((f) => (
-                <details key={f.q} className="group border-b border-[var(--rule)] py-5">
-                  <summary className="cursor-pointer list-none flex items-start justify-between gap-6">
-                    <span className="display text-[26px] sm:text-[30px] leading-tight">{f.q}</span>
-                    <span className="mono text-[20px] text-[var(--ink-3)] transition-transform group-open:rotate-45 mt-1" aria-hidden>
-                      +
-                    </span>
-                  </summary>
-                  <p className="mt-3 text-[17px] text-[var(--ink-2)] max-w-[64ch]">{f.a}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* closing call */}
-      <section className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-28 text-center">
-        <Seal size={120} animate={false} rot={-8} className="mx-auto" sub="YOUR FILE" />
-        <h2 className="display text-[48px] sm:text-[80px] mt-8 max-w-[16ch] mx-auto">
-          Next time, walk in with the same story you told last time.
-        </h2>
-        <Link href="/app" className="btn mt-10">
-          Start your file <span aria-hidden>→</span>
-        </Link>
+        </Reveal>
       </section>
 
       <Footer />
