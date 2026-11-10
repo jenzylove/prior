@@ -7,33 +7,34 @@ import { walrusBlobUrl, suiTxUrl, suiObjectUrl, short } from "@/components/ui/ap
 import { KIND_LABEL } from "@/components/app/FactLedger";
 
 /* ─────────────────────────────────────────────────────────────────────
-   Replay of a real run on Sui mainnet (file-testrun01, 9 to 10 Nov 2026).
+   Replay of a real run on Sui mainnet (Maya, 10 Nov 2026).
    Every id below is real and opens on an explorer. Nothing is invented.
    ───────────────────────────────────────────────────────────────────── */
 
 const HISTORY =
-  "I have worked at Zenith Bank in Lagos as a relationship manager since January 2020. I applied for a UK Standard Visitor visa in March 2023 and it was refused on 2023-04-02. On my Schengen application to France filed on 2024-02-10 I answered No to the question about previous visa refusals.";
+  "I have worked at Harbor Freight Co as an operations manager since January 2020. I applied for a UK Standard Visitor visa in March 2023 and it was refused on 2023-04-02. On my Schengen application to France, filed on 2024-02-10, I wrote that I started at Harbor Freight Co in March 2019, and I answered No to the question about previous visa refusals.";
 
 const FACTS: (Fact & { blobId: string })[] = [
-  { id: "f_m2l9niox", kind: "identity", text: "You are Adaeze Okafor, a Nigerian national.", fields: {}, source: "history", blobId: "5x0tYDdJtnEqo1Cbhii9dosH4BYcSA6dzc81gQLhz3A" },
-  { id: "f_m7tha7cj", kind: "employment", text: "You have worked at Zenith Bank in Lagos as a relationship manager since January 2020.", fields: { start: "2020-01" }, source: "history", blobId: "eYT63IRI2YJkAgDW4g-D1_Aa3cElFicYYQ6eOkr7nJo" },
-  { id: "f_06x7pw5x", kind: "employment", text: "You worked at Deloitte Nigeria as an analyst from June 2016 to August 2019.", fields: { start: "2016-06", end: "2019-08" }, source: "history", blobId: "nUQ55y7DxH7dcls1w9qQrIxxA7p72cud4iBPt_2cnF0" },
-  { id: "f_fkqm1czu", kind: "employment", text: "On your France Schengen application you wrote that you started at Zenith Bank in March 2019.", fields: {}, source: "past_form", blobId: "mK411bDNFGJ80cfOoPRyFoDxQYO1V8XlTMWnaceMweA" },
-  { id: "f_b2x9jlti", kind: "address", text: "You have lived at 14 Admiralty Way, Lekki, Lagos since 2021.", fields: { start: "2021" }, source: "history", blobId: "qbWsLSU1PhN_tn6ODGvOeMZr00F7NuRJvgdUHG47Ns8" },
-  { id: "f_jsh2ku0b", kind: "trip", text: "You travelled to Accra, Ghana from 1 to 12 August 2022 for a wedding.", fields: { start: "2022-08-01", end: "2022-08-12" }, source: "history", blobId: "-__yar8aANgdpQnpyDsYs4CH1PNYqUfUCdJE0bngpbQ" },
-  { id: "f_nuyygsqv", kind: "trip", text: "You travelled to Dubai, UAE from 20 to 30 December 2023 for a holiday.", fields: { start: "2023-12-20", end: "2023-12-30" }, source: "history", blobId: "kn5PuvdepJVDXfdvdNUR-yryuWJIZJkN5JVQKQqVogc" },
-  { id: "f_ysspm3wa", kind: "trip", text: "You travelled to Nairobi, Kenya from 8 to 15 May 2024 for a conference.", fields: { start: "2024-05-08", end: "2024-05-15" }, source: "history", blobId: "2wukEL-3HIaFBqMn1w9qdj001mNicphWsRbeg2rAPKM" },
-  { id: "f_ho2zlwfi", kind: "application", text: "You applied for a UK Standard Visitor visa in March 2023.", fields: { date: "2023-03" }, source: "history", blobId: "ljgsuVJFUrd5MHFVaUB8T3uMF_3nu4WHPkgz61-zOgQ" },
-  { id: "f_48xwvjcr", kind: "refusal", text: "Your UK Standard Visitor visa was refused on 2 April 2023.", fields: { date: "2023-04-02" }, source: "history", blobId: "XmW8EnDPVXY7_HIUhzKKHpm2Syu2NPIQqZJaG07oxX8" },
-  { id: "f_kdz6v69w", kind: "application", text: "You applied for a Schengen visa to France on 10 February 2024.", fields: { date: "2024-02-10" }, source: "history", blobId: "qGYieoSF9TEk2pf_6CRz0UCBZhhGvrOPN5lUsMKaxrs" },
-  { id: "f_k6zknrq1", kind: "application", text: "On your France Schengen application you answered No to the question about previous visa refusals.", fields: { date: "2024-02-10" }, source: "past_form", blobId: "230G-AcgCFNr7E9Ine5hHG3gnMU0xxQGXeFlnlH9Z-Y" },
+  { id: "f_qfa83h10xf", kind: "identity", text: "Your name is Maya Chen.", fields: {}, source: "history", blobId: "oDeHs83oLCL2hDX0bzgt3jifK_iex_zL_7JLPmCNQZ4" },
+  { id: "f_0jiuil48ro", kind: "employment", text: "You worked at Northwind Bank as an analyst from June 2016 to August 2019.", fields: {"start": "2016-06", "end": "2019-08"}, source: "history", blobId: "GwJf1J2qbFMTSJxzgplj6urhr1hBt1YinOZT6zRR-24" },
+  { id: "f_nr2h18usor", kind: "employment", text: "You have worked at Harbor Freight Co as an operations manager since January 2020.", fields: {"start": "2020-01"}, source: "history", blobId: "L-nnhAAtFTZGMZPPP_dk3Mh9oHQFK1OBRJC96u7IKoo" },
+  { id: "f_z3lq4rut61", kind: "address", text: "You have lived at your current address since 2021.", fields: {"start": "2021"}, source: "history", blobId: "JY-MHyit7iF_XA5OVNhJuJU6lPY8e7tfJpNuCTwj0k8" },
+  { id: "f_omxlt1s6so", kind: "trip", text: "You traveled to Lisbon, Portugal for a wedding from 2022-08-01 to 2022-08-12.", fields: {"start": "2022-08-01", "end": "2022-08-12"}, source: "history", blobId: "_-18A_Zpcj34I_L9MiRv3dBRGyyrB8sZBgO0uHFl9uA" },
+  { id: "f_anmtq0ujps", kind: "trip", text: "You traveled to Dubai, UAE on holiday from 2023-12-20 to 2023-12-30.", fields: {"start": "2023-12-20", "end": "2023-12-30"}, source: "history", blobId: "06pTubZZaRfcvLsbnMJM6PlyUTCNK36bSArnzBh8PgQ" },
+  { id: "f_a191tslbkp", kind: "trip", text: "You traveled to Tokyo, Japan for a conference from 2024-05-08 to 2024-05-15.", fields: {"start": "2024-05-08", "end": "2024-05-15"}, source: "history", blobId: "uaIYrP6FIxNb7P9I2Bd37Zs1jky3S4dH7pMSvg434ek" },
+  { id: "f_ifrookfsgf", kind: "application", text: "You applied for a UK Standard Visitor visa in March 2023.", fields: {"date": "2023-03"}, source: "history", blobId: "kdHYaAbVqnQ1FGbu5byiOB_I50IKTNkyspeh1pQtRbk" },
+  { id: "f_ayrjtr1izl", kind: "refusal", text: "Your UK Standard Visitor visa application was refused on 2023-04-02.", fields: {"date": "2023-04-02"}, source: "history", blobId: "bUeGscNdrQGBEFcI9eXMg-0RFVCoEyBLfh433CnbOSg" },
+  { id: "f_g3mc9a13z3", kind: "application", text: "You filed a Schengen visa application to France on 2024-02-10.", fields: {"date": "2024-02-10"}, source: "history", blobId: "SHtNP92nPVe3haf-8kFNNXU-5Vt2hEL2XiX7nHMUdhM" },
+  { id: "f_ucffg26miu", kind: "employment", text: "On your French Schengen application you wrote that you started at Harbor Freight Co in March 2019.", fields: {"start": "2019-03", "date": "2024-02-10"}, source: "past_form", blobId: "_7NX6dipSQqoP-J8ZRsWz4MhKKUlLY8RYD-5FH90i2k" },
+  { id: "f_ee4376yovs", kind: "application", text: "On your French Schengen application you answered No to the question about previous visa refusals.", fields: {"date": "2024-02-10"}, source: "past_form", blobId: "Q2shXNRNLOZI0tMxuaBDNeVzoW9RKhVY0nUXLIYJlmo" },
+  { id: "f_j24cd07pqb", kind: "application", text: "Your French Schengen visa application was approved.", fields: {"date": "2024-02-10"}, source: "history", blobId: "76OURxZi4CVXm8eyu8KyifXzPJ27DkYTEAubv4yPbZs" },
 ];
 
 const CONTRADICTION = {
-  a: "f_k6zknrq1",
-  b: "f_48xwvjcr",
+  a: "f_ee4376yovs",
+  b: "f_ayrjtr1izl",
   summary: "A form you filed on 2024-02-10 said no previous refusals, but you were refused on 2023-04-02.",
-  fix: "Answer Yes to the previous refusals question, give the date, and be ready to explain the earlier form if asked.",
+  fix: "Disclose every refusal on this application, with dates. Explain the earlier answer before the officer finds it.",
 };
 
 const LETTER =
@@ -50,15 +51,15 @@ const ADDED_DOCS = [
   "Proof of what brings you back: property or tenancy, family you support, ongoing studies or business",
 ];
 const NEW_PARA =
-  "The UK refusal was based on two concerns: an unexplained deposit on 1 March 2023, and the absence of an employer letter confirming my ties to home.";
+  "On funds: The UK application was refused in part because a large deposit on 1 March 2023 meant the funds were not considered genuinely available.";
 
 const GRANT = {
-  id: "0x9428813f1b559b2e95fa731b9416363993ad0a1b1e1c04765f6071bb7c42cb5b",
-  tx: "6AkdiaroFVwNBEWtMKag3YJDoQMTkuLAsaknnz9gWVuv",
-  minutes: 10,
+  id: "0x0fc21ef6772a12c22852b5ab14e023151a861cb88f717fcd69aff1e515195ab9",
+  tx: "A8nxfJaYGAwTK6mX4VGN6pmmFbbnJoGzP7eXxvCCcaS8",
+  minutes: 2,
 };
 const AGENT = { tx: "GyQDgdTkxVwoWwV17ezoDRkZ5eJ4ywqXhvLNXiEQGbX4", usdc: 0.05 };
-const RESTORED = 15; // 12 facts + 1 refusal + 2 lessons
+const RESTORED = 16; // 13 facts + 1 refusal + 2 lessons
 
 /* ───────────────────────────── helpers ───────────────────────────── */
 
@@ -132,7 +133,7 @@ function SceneHistory() {
       </div>
       <div className="mt-4 flex items-center gap-4">
         <span className={`btn btn-sm ${done ? "" : "opacity-40"}`} style={{ transition: "opacity .4s" }}>Build my file</span>
-        {done && <span className="fade-in fine">12 facts read from your history</span>}
+        {done && <span className="fade-in fine">{FACTS.length} facts read from your history</span>}
       </div>
     </div>
   );
@@ -226,7 +227,7 @@ function SceneLearn() {
       {n >= 2 && (
         <div className="mt-5 flex items-baseline gap-6 flex-wrap">
           <span className="display text-[22px]">It <span className="text-[var(--ice)]">learned</span>.</span>
-          {[[5, "documents"], [4, "paragraphs"], [1, "answer"]].map(([c, l], i) => (
+          {[[5, "documents"], [3, "paragraphs"], [1, "answer"]].map(([c, l], i) => (
             <span key={l as string} className="count-up" style={{ animationDelay: `${i * 120}ms` }}>
               <span className="display text-[34px] text-[var(--ice)] tnum">+<Count n={c as number} delay={i * 120} /></span>
               <span className="label ml-2">{l as string}</span>
@@ -255,7 +256,7 @@ function SceneLearn() {
 }
 
 function SceneShare() {
-  // the real grant ran for 10 minutes; replayed here in six seconds
+  // the real grant ran for 2 minutes; replayed here in six seconds
   const n = useTick(100, 60);
   const left = Math.max(0, 60 - n);
   const ended = left === 0;
@@ -315,7 +316,7 @@ function SceneRestore() {
             {phase === "full" && "On this device"}
             {phase === "wipe" && <span className="text-[var(--red)]">Wiping the local copy</span>}
             {phase === "empty" && "Nothing on this device. Still on Walrus."}
-            {phase === "refill" && (refilled < FACTS.length ? <span className="text-[var(--ice)]">Downloading and decrypting from Walrus</span> : "12 history facts, 1 refusal, 2 lessons, decrypted and back in your file.")}
+            {phase === "refill" && (refilled < FACTS.length ? <span className="text-[var(--ice)]">Downloading and decrypting from Walrus</span> : `${FACTS.length} history facts, 1 refusal, 2 lessons, decrypted and back in your file.`)}
           </div>
         </div>
         <FileSphere facts={shown} seals={{}} size={96} />
@@ -344,7 +345,7 @@ function SceneAgents() {
 
 const SCENES = [
   { h: "Your history, in your own words.", l: "Paste it. No forms yet.", S: SceneHistory },
-  { h: "Sealed fact by fact on Walrus.", l: "12 facts, each one a Seal encrypted blob you can open.", S: SceneSeal },
+  { h: "Sealed fact by fact on Walrus.", l: "13 facts, each one a Seal encrypted blob you can open.", S: SceneSeal },
   { h: "The red line an officer would find.", l: "Your 2024 form said No. Your file says refused in 2023.", S: SceneContradiction },
   { h: "One refusal letter. Five new documents.", l: "Two lessons on file, and the pack redrafted itself.", S: SceneLearn },
   { h: "Your consultant's link dies on time.", l: "A grant on Sui. The Seal key servers check the clock.", S: SceneShare },

@@ -160,7 +160,7 @@ export function findContradictions(facts: Fact[], answers: Answer[] = [], now: D
       out.push({
         id: cid(['undisclosed', filed.id]),
         factIds: [filed.id, ...earlier.map(r => r.id)],
-        summary: `A form you filed on ${filed.fields.date} said no previous refusals, but you were refused on ${earlier.map(r => r.fields.date).join(', ')}.`,
+        summary: `A form you filed on ${filed.fields.date} said no previous refusals, but you were refused on ${[...new Set(earlier.map(r => r.fields.date))].join(', ')}.`,
         fix: 'Disclose every refusal on this application, with dates. Explain the earlier answer before the officer finds it.',
         severity: 'high',
       });
