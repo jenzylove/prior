@@ -273,3 +273,6 @@ details.acc .acc-body > div { overflow: hidden; }
 }
 
 @keyframes draw-line { to { stroke-dashoffset: 0; } }
+
+.lock-ring { transform-box: fill-box; transform-origin: center; animation: lock-ring .9s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes lock-ring { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }

@@ -9,7 +9,7 @@ import { FactRow, type SealState } from "./FactLedger";
 import { FileSphere } from "./FileSphere";
 import { PackView, useFactIndex } from "./PackView";
 import { PackDiff, diffPacks } from "./PackDiff";
-import { readHistoryFile } from "./readFile";
+import { Intake } from "./Intake";
 
 /* ─────────────────────────── local index ─────────────────────────── */
 
@@ -216,7 +216,13 @@ export default function Flow() {
       const clean: Fact = { ...fact };
       delete clean.blobId;
       delete clean.sealedAt;
-      const r = await api<{ blobId: string; sealedAt: string }>("/api/seal", { ns, fact: clean });
+      // Walrus writes occasionally fail on the relayer side; retry quietly before showing an error.
+      let r = await api<{ blobId: string; sealedAt: string }>("/api/seal", { ns, fact: clean });
+      for (let attempt = 1; attempt < 3 && !(r.ok && r.data.blobId); attempt++) {
+        if (!r.ok && /limit|too large|invalid/i.test(r.error)) break;
+        await new Promise((res) => setTimeout(res, 1500 * attempt));
+        r = await api<{ blobId: string; sealedAt: string }>("/api/seal", { ns, fact: clean });
+      }
       if (r.ok && r.data.blobId) {
         setFacts((prev) => prev.map((f) => (f.id === fact.id ? { ...f, blobId: r.data.blobId, sealedAt: r.data.sealedAt } : f)));
         setFresh((s) => new Set(s).add(fact.id));
@@ -240,32 +246,24 @@ export default function Flow() {
   const [history, setHistory] = useState("");
   const [intakeBusy, setIntakeBusy] = useState(false);
   const [intakeErr, setIntakeErr] = useState<string | null>(null);
-  const [fileNote, setFileNote] = useState<string | null>(null);
+  const [fileNote] = useState<string | null>(null);
   const [lastIntake, setLastIntake] = useState<number | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
-    setFileNote(`Reading ${f.name}`);
-    const r = await readHistoryFile(f);
-    if (r.ok) {
-      setHistory((h) => (h.trim() ? h.trim() + "\n\n" : "") + r.text.trim());
-      setFileNote(`Added the text of ${f.name}. Check it below before you build.`);
-    } else {
-      setFileNote(r.reason);
-    }
-  }
-
-  async function buildFile() {
+  async function buildFile(text: string = history) {
     setIntakeErr(null);
     setIntakeBusy(true);
-    const r = await api<{ facts: Fact[] }>("/api/intake", { ns, text: history });
+    const r = await api<{ facts: Fact[] }>("/api/intake", { ns, text });
     setIntakeBusy(false);
     if (!r.ok) return setIntakeErr(r.error);
     const add = r.data.facts ?? [];
     if (!add.length) return setIntakeErr("No facts could be read from that text. Add dates, places and employers in plain words.");
+    setFacts((prev) => mergeFacts(prev, add));
+    setLastIntake(add.length);
+    add.forEach((f) => void sealOne(f));
+  }
+
+  function addFacts(add: Fact[]) {
+    if (!add.length) return;
+    setIntakeErr(null);
     setFacts((prev) => mergeFacts(prev, add));
     setLastIntake(add.length);
     add.forEach((f) => void sealOne(f));
@@ -305,10 +303,10 @@ export default function Flow() {
     setPack(d.data.pack);
   }
 
-  async function readRefusal() {
+  async function readRefusal(text: string = letter) {
     setRefErr(null);
     setRefBusy("reading");
-    const r = await api<{ refusal: Fact; lessons: Fact[] }>("/api/refusal", { ns, text: letter });
+    const r = await api<{ refusal: Fact; lessons: Fact[] }>("/api/refusal", { ns, text });
     if (!r.ok) {
       setRefBusy(null);
       return setRefErr(r.error);
@@ -525,9 +523,9 @@ export default function Flow() {
     <main className="mx-auto max-w-[1200px] px-4 sm:px-8 pb-16">
       <div className="pt-10 sm:pt-16 pb-6">
         <div className="label">Your file · {progress} of 5 done</div>
-        <h1 className="display display-tight text-[44px] sm:text-[72px] mt-3">Tell Prior your history once.</h1>
+        <h1 className="display display-tight text-[44px] sm:text-[72px] mt-3">Your visa file.</h1>
         <p className="mt-4 text-[17px] sm:text-[19px] text-[var(--fg-2)] max-w-[52ch]">
-          Every application after this one will agree with it. One step at a time; done steps fold up above.
+          Build it once. Every application after this one is drafted from it and checked against it.
         </p>
         <div className="mt-6 flex gap-1" aria-hidden>
           {[hasFacts, !!pack, !!refusal, !!share, restored !== null].map((d, i) => (
@@ -541,56 +539,31 @@ export default function Flow() {
           {/* 1 */}
           <Step
             n={1}
-            title="Your history"
+            title="Build your file"
             status={s1}
-            summary={hasFacts ? <>{facts.length} facts on file, <span style={{ color: "var(--ice)" }}>{sealed} sealed on Walrus</span>{sealingCount > 0 ? `, ${sealingCount} sealing` : ""}.</> : "Paste your history. It becomes sealed facts."}
+            summary={hasFacts ? <>{facts.length} entries on your timeline, <span style={{ color: "var(--ice)" }}>{sealed} sealed on Walrus</span>{sealingCount > 0 ? `, ${sealingCount} sealing` : ""}.</> : "Every job, trip and application, on one timeline."}
             onOpen={() => setActive(1)}
           >
             <p className="lede max-w-[58ch]">
-              Write it the way you would tell a friend: where you worked and when, where you lived, every trip abroad, every
-              visa you applied for and what happened.
+              Every job, trip and application you have, on one timeline. Each entry is sealed on Walrus as you add it.
             </p>
-            <textarea
-              id="history"
-              className="sheet mt-7"
-              rows={9}
-              value={history}
-              onChange={(e) => setHistory(e.target.value)}
-              placeholder={
-                "I have worked at Harbor Freight Co as an accounts officer since March 2018. Before that I worked at a bank from June 2015 to February 2018.\nI have lived at my current address since 2020.\nI went to London in August 2019 for two weeks for my cousin's wedding.\nIn 2023 I applied for a Schengen visa to France and was refused.\nOn my 2024 US visa form I wrote that I started my current job in 2017."
-              }
+            <Intake
+              facts={facts}
+              seals={seals}
+              focusId={focus?.id}
+              busy={intakeBusy || !ready || refBusy === "reading"}
+              onAdd={addFacts}
+              onFreeText={(t) => { setHistory(t); void buildFile(t); }}
+              onDocument={(t, isRef) => { if (isRef) { setLetter(t); void readRefusal(t); } else { setHistory(t); void buildFile(t); } }}
+              note={fileNote}
             />
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <button className="btn" disabled={!ready || intakeBusy || history.trim().length < 20} onClick={buildFile}>
-                {intakeBusy ? <Busy>Reading your history</Busy> : hasFacts ? "Add to my file" : "Build my file"}
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
-                Add a text file or PDF
-              </button>
-              <input ref={fileRef} type="file" accept=".txt,.md,.text,.pdf,text/plain,application/pdf" className="hidden" onChange={onFile} />
-            </div>
-            {fileNote && <p className="fine mt-3">{fileNote}</p>}
             <ErrorLine msg={intakeErr} />
+            {refErr && <ErrorLine msg={refErr} />}
 
-            {lastIntake !== null && !intakeErr && (
-              <p className="slide-in mt-6 text-[17px]">
-                <span className="display text-[30px] text-[var(--ice)] mr-2 tnum">{lastIntake}</span>
-                facts read from your history.{" "}
-                {sealingCount > 0 ? (
-                  <span className="text-[var(--fg-2)]">Each one is being encrypted with Seal and written to Walrus mainnet, about twenty seconds each, all at once. Watch them lock.</span>
-                ) : (
-                  <span className="text-[var(--fg-2)]">All sealed.</span>
-                )}
+            {lastIntake !== null && !intakeErr && sealingCount > 0 && (
+              <p className="slide-in mt-6 text-[15px] text-[var(--fg-2)]">
+                Each entry is being encrypted with Seal and written to Walrus mainnet, about twenty seconds each, all at once. Watch the marks lock.
               </p>
-            )}
-
-            {/* the file, inline on phones and while sealing on desktop */}
-            {hasFacts && (
-              <div className="mt-8 lg:hidden">
-                {fileHead}
-                <div className="rule mt-4" />
-                {ledgerList}
-              </div>
             )}
 
             {hasFacts && (
@@ -601,9 +574,16 @@ export default function Flow() {
                 {sealingCount > 0 && <span className="fine">Sealing carries on in the background.</span>}
               </div>
             )}
+
+            {hasFacts && (
+              <div className="mt-8 lg:hidden">
+                {fileHead}
+                <div className="rule mt-4" />
+                {ledgerList}
+              </div>
+            )}
             <p className="fine mt-6 max-w-[60ch]">
-              The memory relayer sees the text briefly to make a search vector, and the drafting model reads it to write answers.
-              Neither stores it. What is kept is Seal ciphertext on Walrus.
+              Entries you add here never touch a model. Documents and free text are read once by the drafting model and the memory relayer; neither stores them. What is kept is Seal ciphertext on Walrus.
             </p>
           </Step>
 
@@ -719,7 +699,7 @@ export default function Flow() {
               placeholder={"Paste the full text of the letter, including the reasons. For example: \"You have not provided sufficient evidence of your employment and the funds available to you…\""}
             />
             <div className="mt-5 flex flex-wrap items-center gap-4">
-              <button className="btn btn-red" disabled={!!refBusy || letter.trim().length < 30} onClick={readRefusal}>
+              <button className="btn btn-red" disabled={!!refBusy || letter.trim().length < 30} onClick={() => void readRefusal()}>
                 {refBusy === "reading" ? <Busy>Reading the letter</Busy> : refBusy === "redrafting" ? <Busy>Redrafting with the lessons</Busy> : "Learn from this refusal"}
               </button>
               {!pack && <span className="fine">Draft a pack in step 2 first to see what changes.</span>}
