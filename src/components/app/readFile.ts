@@ -10,7 +10,17 @@ export async function readHistoryFile(file: File): Promise<{ ok: true; text: str
     try {
       const text = await pdfText(file);
       if (looksReadable(text)) return { ok: true, text };
-      return { ok: false, reason: "This PDF has no text we can read in the browser (it may be a scan). Paste the text instead." };
+    } catch { /* fall through to the server reader */ }
+    // Scans and unusual fonts: read it once on the server (the model transcribes it; nothing is stored).
+    if (file.size > 3 * 1024 * 1024) return { ok: false, reason: "That PDF is over 3 MB. Paste the text instead." };
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      let bin = "";
+      for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      const res = await fetch("/api/read-pdf", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ data: btoa(bin) }) });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && typeof body.text === "string" && body.text.trim()) return { ok: true, text: body.text };
+      return { ok: false, reason: body.error ?? "Could not read this PDF. Paste the text instead." };
     } catch {
       return { ok: false, reason: "Could not read this PDF. Paste the text instead." };
     }

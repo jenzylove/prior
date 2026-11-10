@@ -173,7 +173,13 @@ export default function Flow() {
     setFacts(load<Fact[]>(K.facts) ?? []);
     setPack(load<Pack>(K.pack));
     const t = load<Trip>(K.trip);
-    if (t) setTrip(t);
+    if (t) {
+      // Older saved trips may be missing fields or have dates in the past: fill them with defaults.
+      const d = defaultDates();
+      const form = t.form && DEST_DEFAULT[t.form] ? t.form : "schengen";
+      const fresh = t.start && t.end && t.start >= new Date().toISOString().slice(0, 10);
+      setTrip({ form, destination: t.destination || DEST_DEFAULT[form], purpose: t.purpose || "Tourism", start: fresh ? t.start : d.start, end: fresh ? t.end : d.end });
+    }
     setReady(true);
   }, []);
 
