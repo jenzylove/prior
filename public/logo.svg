@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs><path id="ring" d="M100,100 m-72,0 a72,72 0 1,1 144,0 a72,72 0 1,1 -144,0"/></defs>
+  <circle cx="100" cy="100" r="94" fill="#f3ead8" stroke="#1d2a44" stroke-width="5"/>
+  <circle cx="100" cy="100" r="82" fill="none" stroke="#1d2a44" stroke-width="1.5"/>
+  <circle cx="100" cy="100" r="52" fill="none" stroke="#1d2a44" stroke-width="1.5"/>
+  <text font-family="Georgia, serif" font-size="15" letter-spacing="4" fill="#1d2a44"><textPath href="#ring">ON FILE · SEALED ON WALRUS · SUI MAINNET ·</textPath></text>
+  <text x="100" y="118" text-anchor="middle" font-family="Georgia, serif" font-size="56" font-style="italic" fill="#b3261e">P</text>
+</svg>
