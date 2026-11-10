@@ -7,8 +7,8 @@ import { FAQ } from "@/components/landing/FAQ";
 
 const SOURCES = {
   mappr: "https://www.mappr.co/?p=72448",
-  lawyer: "https://thenigerialawyer.com/1-34m-nigerian-visa-applications-rejected-uk-refusals-hit-21-year-high-as-nigeria-ranks-second-globally/",
-  guardian: "https://krdo.com/news/2025/05/21/africans-lost-nearly-70m-to-denied-visas-applications-to-europe-in-2024/",
+  dawn: "https://dawn.com/news/amp/1839140",
+  nolo: "https://www.alllaw.com/articles/nolo/us-immigration/visa-green-card-denied-false-information-forms.html",
 };
 
 function Src({ href, children }: { href: string; children: React.ReactNode }) {
@@ -98,20 +98,20 @@ export default function Home() {
         <div className="rule-strong">
           {[
             {
-              n: "47.9%",
+              n: "1.75M",
               red: true,
-              t: "of Nigerian applicants were refused a Schengen visa in 2025, against 14.6% of applicants worldwide.",
+              t: "Schengen visa applications were refused in 2025, one in every seven of about 12 million filed.",
               s: <Src href={SOURCES.mappr}>Mappr, from European Commission data</Src>,
             },
             {
-              n: "66,143",
-              t: "Nigerian visitor visas refused by the UK in 2025. A refusal rate of 38.6%.",
-              s: <Src href={SOURCES.lawyer}>The Nigeria Lawyer</Src>,
+              n: "€130M",
+              t: "in Schengen visa fees kept from refused applicants in a single year (2023). A refused fee is never refunded.",
+              s: <Src href={SOURCES.dawn}>Dawn, LAGO Collective data</Src>,
             },
             {
-              n: "$70M",
-              t: "Close to that much was lost by African applicants on Schengen fees for refused visas in 2024. The fee is not refunded.",
-              s: <Src href={SOURCES.guardian}>CNN, LAGO Collective data</Src>,
+              n: "For life",
+              t: "A false \"No\" about a past refusal on a US visa form can be treated as misrepresentation, and that bar is permanent.",
+              s: <Src href={SOURCES.nolo}>Nolo, on INA 212(a)(6)(C)(i)</Src>,
             },
           ].map((x, i) => (
             <Reveal key={x.n} delay={i * 80} className="grid gap-3 sm:grid-cols-[260px_1fr] items-baseline py-8 border-b border-[var(--rule)]">

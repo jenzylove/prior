@@ -21,8 +21,9 @@ Prior is a visa agent that remembers every application you have ever filed: the 
 
 **Visa refusals are not a documents problem. They are a memory problem.** The officer has every form you ever filed. You do not.
 
-- Schengen refused **47.9%** of Nigerian applicants in 2025, against **14.6%** worldwide ([Mappr](https://www.mappr.co/?p=72448), European Commission data).
-- The UK refused **66,143** Nigerian visitor visas in 2025, a **38.6%** refusal rate ([The Nigeria Lawyer](https://thenigerialawyer.com/1-34m-nigerian-visa-applications-rejected-uk-refusals-hit-21-year-high-as-nigeria-ranks-second-globally/)).
+- **1.75 million** Schengen visa applications were refused in 2025, one in every seven of about 12 million filed ([Mappr](https://www.mappr.co/?p=72448), European Commission data).
+- **€130M** in Schengen fees was kept from refused applicants in 2023 alone, and a refused fee is never refunded ([Dawn](https://dawn.com/news/amp/1839140), LAGO Collective data).
+- A false "No" about a past refusal on a US visa form can be treated as misrepresentation, a permanent bar ([Nolo](https://www.alllaw.com/articles/nolo/us-immigration/visa-green-card-denied-false-information-forms.html)).
 - Officers cross check a new application against previous applications, travel history and employment dates ([Ahluwalia Law](https://www.ahluwalialaw.com/ai-visa-screening-consular-adjudication-2026/)). One mismatch reads as a credibility problem, and a refusal you forgot to disclose can be treated as deception.
 
 ## Judge fast path (five minutes, no keys)

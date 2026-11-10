@@ -557,7 +557,11 @@ export default function Flow() {
               value={history}
               onChange={(e) => setHistory(e.target.value)}
               placeholder={
-                "I have worked at Lagos Freight Ltd as an accounts officer since March 2018. Before that I was at Zenith Bank from June 2015 to February 2018.\nI live at 14 Adeola Street, Ikeja, Lagos.\nI went to London in August 2019 for two weeks for my cousin's wedding.\nIn 2023 I applied for a Schengen visa to France and was refused."
+                "I have worked at Harbor Freight Co as an accounts officer since March 2018. Before that I worked at a bank from June 2015 to February 2018.
+I have lived at my current address since 2020.
+I went to London in August 2019 for two weeks for my cousin's wedding.
+In 2023 I applied for a Schengen visa to France and was refused.
+On my 2024 US visa form I wrote that I started my current job in 2017."
               }
             />
             <div className="mt-5 flex flex-wrap items-center gap-4">
