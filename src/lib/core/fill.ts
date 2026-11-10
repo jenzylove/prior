@@ -65,7 +65,7 @@ export function mergeRefusals(refusals: Fact[]): (Fact & { mergedIds?: string[] 
 const citesOf = (rs: (Fact & { mergedIds?: string[] })[]) => rs.flatMap(r => r.mergedIds ?? [r.id]);
 
 const lc = (s?: string) => (s ?? '').toLowerCase();
-const inGroup = (country: string | undefined, form: string) => {
+export const inGroup = (country: string | undefined, form: string) => {
   const c = lc(country);
   return !!c && (COUNTRY_GROUPS[form] ?? []).some(g => c === g || c.includes(g));
 };

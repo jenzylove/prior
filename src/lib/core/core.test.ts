@@ -44,6 +44,14 @@ describe('findContradictions', () => {
     expect(c.some(x => x.questionId === 'uk_prev_refusal')).toBe(true);
   });
 
+  it('does not flag a correct "No" on a Schengen question when the refusal was UK', () => {
+    const facts = [f('r1', 'refusal', { country: 'UK', date: '2023-04-02' })];
+    const c = findContradictions(facts, [{ questionId: 'sch_prev_refusal', value: 'No', status: 'filled', cites: [] }], NOW);
+    expect(c.some(x => x.questionId === 'sch_prev_refusal')).toBe(false);
+    const c2 = findContradictions([f('r2', 'refusal', { country: 'France', date: '2023-04-02' })], [{ questionId: 'sch_prev_refusal', value: 'No', status: 'filled', cites: [] }], NOW);
+    expect(c2.some(x => x.questionId === 'sch_prev_refusal')).toBe(true);
+  });
+
   it('flags overlapping jobs and long gaps, but not clean histories', () => {
     const overlap = [
       f('j1', 'employment', { employer: 'A Ltd', start: '2019-01', end: '2021-06' }),

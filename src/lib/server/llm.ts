@@ -60,7 +60,7 @@ Every factual sentence must end with the ids of the facts it relies on in square
 Follow every lesson given: each lesson comes from a past refusal and must be answered directly in its own paragraph.
 When a paragraph answers a lesson, also cite the lesson id in its brackets.
 The trip being applied for is cited as [trip].
-Structure: 1) who the applicant is and the trip, 2) work and ties, 3) travel history and past applications (disclose every refusal), 4) one paragraph per lesson, 5) a one line close. Write each paragraph once. Never repeat a sentence.
+Always write the letter; never refuse, never address the applicant, never give instructions instead of a letter. Write in the first person as the applicant. Treat the history facts as the truth. If open contradictions are listed, add one short paragraph that corrects the earlier form plainly (what it said, what is correct). Structure: 1) who the applicant is and the trip, 2) work and ties, 3) travel history and past applications (disclose every refusal), 4) a correction paragraph if there are open contradictions, 5) one paragraph per lesson, 6) a one line close. Write each paragraph once. Never repeat a sentence.
 Return only the letter text, paragraphs separated by a blank line, no heading, no preamble. Under 300 words.`;
 
 export async function writeCoverLetter(facts: Fact[], trip: Trip, guidance: { text: string; factId: string }[], contradictions: Contradiction[]): Promise<{ text: string; cites: string[] }> {

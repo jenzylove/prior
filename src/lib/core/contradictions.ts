@@ -1,5 +1,6 @@
 import type { Answer, Contradiction, Fact } from './types';
 import { formatMonth, monthIndex, nowMonth, rangesOverlap } from './dates';
+import { inGroup } from './fill';
 
 const norm = (s?: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
@@ -168,12 +169,16 @@ export function findContradictions(facts: Fact[], answers: Answer[] = [], now: D
 
   // 6. The current draft says "no refusals" while the file holds refusals.
   for (const ans of answers) {
-    if (ans.questionId && /refus/i.test(ans.questionId) && /^no\b/i.test(ans.value.trim()) && refusals.length) {
+    if (!ans.questionId || !/refus/i.test(ans.questionId) || !/^no\b/i.test(ans.value.trim())) continue;
+    // Schengen and US questions ask about refusals for that destination; the UK question asks about any country.
+    const scope = ans.questionId.startsWith('sch_') ? 'schengen' : ans.questionId.startsWith('us_') ? 'us_ds160' : null;
+    const relevant = scope ? refusals.filter(r => inGroup(r.fields.country, scope)) : refusals;
+    if (relevant.length) {
       out.push({
         id: cid(['draft', ans.questionId]),
         questionId: ans.questionId,
-        factIds: refusals.map(r => r.id),
-        summary: `This draft answers "No" to previous refusals, but your file has ${refusals.length}.`,
+        factIds: relevant.map(r => r.id),
+        summary: `This draft answers "No" to previous refusals, but your file has ${relevant.length}.`,
         fix: 'Answer "Yes" and list each refusal with its date and reason.',
         severity: 'high',
       });
