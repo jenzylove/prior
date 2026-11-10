@@ -16,3 +16,4 @@ wallet*.json
 coverage/
 *.log
 .DS_Store
+/.next-api/
