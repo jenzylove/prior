@@ -40,8 +40,20 @@ source: "history" by default. If the text quotes what the person WROTE ON A PAST
 A refusal mentioned in history is kind "refusal" with country, visaType and date. Also emit an "application" fact for each application mentioned.
 Never invent dates, names, numbers or reasons. Skip anything that is not a fact about the person. At most 40 facts.`;
 
-export async function extractFacts(text: string): Promise<Omit<Fact, 'id'>[]> {
-  const r = await json<{ facts: Omit<Fact, 'id'>[] }>(FACT_SYSTEM, text.slice(0, 12000), 4000);
+export type DocType = 'history' | 'cv' | 'past_form';
+
+const DOC_HINT: Record<DocType, string> = {
+  history: ``,
+  cv: `This document is the person's CV or resume. Treat it as their true history (source "history"): every job with employer, role and dates, education, and any travel listed.
+
+`,
+  past_form: `This document is a visa application form the person FILED IN THE PAST. Everything in it is what they wrote then, not necessarily the truth. Emit: one "application" fact with source "history" (country, visaType, date filed, outcome if shown); and every answer as source "past_form": jobs as kind "employment" with the employer and dates they wrote, and the previous refusals question as kind "application" with fields.formQuestion, fields.answeredValue, fields.date (filing date) and fields.country.
+
+`,
+};
+
+export async function extractFacts(text: string, doc: DocType = 'history'): Promise<Omit<Fact, 'id'>[]> {
+  const r = await json<{ facts: Omit<Fact, 'id'>[] }>(FACT_SYSTEM, DOC_HINT[doc] + text.slice(0, 12000), 4000);
   return (r.facts ?? []).filter(f => f && f.kind && f.text).map(f => ({ ...f, fields: f.fields ?? {}, source: f.source === 'past_form' ? 'past_form' : 'history' }));
 }
 
