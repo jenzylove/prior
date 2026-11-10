@@ -10,11 +10,11 @@ Deadline: Nov 10 2026, 17:00 UTC (18:00 WAT). Live: https://prior.jdollar.site
 | Published blog post | done | https://dev.to/jenzylove/prior-a-visa-agent-that-remembers-every-application-you-filed-59hl |
 | Working demo | done | https://prior-pi.vercel.app/app, consultant view decrypts in a browser on production |
 | Public GitHub repo | done | https://github.com/jenzylove/prior |
-| Demo video 2 to 3 min | not yet | |
+| Demo video 2 to 3 min | done | https://youtu.be/nV1emaLrucM |
 | Form: Tatum account ID | ready | 6af24d98059c9eaaf7a6e42b |
 | Form: SUI address | ready | 0xd245602619cb352fcce63fdb038815b96be6255cc946745326dd80a3adf3baf5 |
 | Form: Account ID (SUI) | ready | 0x3ffa0d1cde15d3b203c1c0b838022c3b7aa30edcdc58411ca53d1501712805aa |
 | Form: MEMWAL_AGENT_ID | ready | 4313f55a891c64d3025751f59bfda3562427b3eeb410911313e862c82683b910 (delegate "prior") |
 | Best Agent Payments: MPP settled on Sui | done | Payment `GyQDgdTkxVwoWwV17ezoDRkZ5eJ4ywqXhvLNXiEQGbX4`, 0.05 USDC, verified via Tatum |
-| Bonus: post on X tagging @Tatum_io and @WalrusFoundation | not yet | |
+| Bonus: social post | done (LinkedIn) | https://lnkd.in/p/eGJAeszg |
 | One submission per person | ok | |

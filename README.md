@@ -96,6 +96,7 @@ A refused Schengen application loses a EUR 90 fee and months of planning. A Prio
 - Share policy package (immutable): [`0x38ac8750…f81b`](https://suivision.xyz/package/0x38ac8750c7a00c9b4fba9a5bd86320ec67590da579a859b85eb69f5571b4f81b)
 - Spikes with outputs: [`docs/spikes`](docs/spikes)
 - Eval: [`docs/EVAL.md`](docs/EVAL.md)
+- Demo video: [YouTube](https://youtu.be/nV1emaLrucM)
 - Blog post: [dev.to](https://dev.to/jenzylove/prior-a-visa-agent-that-remembers-every-application-you-filed-59hl)
 
 ## Run it
