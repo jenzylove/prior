@@ -121,7 +121,6 @@ export function HeroScene({ onPhase }: { onPhase?: (i: number) => void }) {
     let lastLoop = -1;
 
     const rot = new THREE.Vector3();
-    const dir = new THREE.Vector3();
     const tmp = new THREE.Vector3();
     const pickNearest = (target: THREE.Vector3, angle: number, exclude: Set<number>) => {
       let best = -1, bd = -Infinity;

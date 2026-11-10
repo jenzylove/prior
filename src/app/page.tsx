@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Masthead, Footer } from "@/components/ui/Chrome";
 import { Reveal } from "@/components/ui/Reveal";
 import Hero from "@/components/landing/Hero";
-import { Steps } from "@/components/landing/Steps";
+import { Demo, Agents } from "@/components/landing/Demo";
 import { FAQ } from "@/components/landing/FAQ";
 
 const SOURCES = {
@@ -125,148 +125,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 01 the problem */}
-      <Section n="01" kicker="The problem" title={<>Refusals are not a documents problem. They are a <span className="text-[var(--red)]">memory</span> problem.</>}>
-        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
-          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
-            <p>
-              The officer has every form you ever filed. When a new application lands, it is checked against your prior
-              applications, your travel history and the employment dates you gave last time.
-            </p>
-            <p>
-              You do not have those forms. So a start date drifts by a few months, a trip is forgotten, and an old refusal
-              is left off the disclosure question. To an officer, inconsistency reads as a credibility problem, and leaving
-              out a past UK refusal can be treated as deception.
-            </p>
-            <p className="text-[var(--fg)]">
-              A generic AI draft cannot fix this. It does not know what you wrote in 2021 or why you were refused in 2023.
-              Prior does, because it kept it.
-            </p>
-          </Reveal>
-
-          {/* one contradiction, as the app shows it */}
-          <Reveal delay={120}>
-            <div className="label mb-5">What a contradiction looks like in Prior</div>
-            <div className="rule-strong">
-              {[
-                ["You said, Schengen form, 2024", "No previous visa refusals"],
-                ["Your history says", "UK Standard Visitor visa refused on 2 April 2023"],
-              ].map(([k, v]) => (
-                <div key={k as string} className="py-4 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
-                  <span className="label pt-1">{k}</span>
-                  <span className="text-[17px]">{v}</span>
-                </div>
-              ))}
-              <div className="py-4 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
-                <span className="label pt-1 !text-[var(--red)]">Flagged</span>
-                <span className="text-[17px]">
-                  <span className="text-[var(--red)] font-medium">A form you filed on 2024-02-10 said no previous refusals, but you were refused on 2023-04-02.</span>{" "}
-                  <span className="text-[var(--fg-2)]">The disclosure question in the new pack is answered Yes, with the date, and the refusal is cited.</span>
-                </span>
-              </div>
-            </div>
-            <p className="fine mt-4 max-w-[44ch]">This is a real flag from our test history, word for word. The officer would have seen it. Prior shows it to you first.</p>
-          </Reveal>
-        </div>
-      </Section>
-
-      {/* 02 what you will do */}
-      <Section n="02" id="how" kicker="What you will do" title="Six things. About a minute, then your file outlives the app." wide>
-        <Steps />
-      </Section>
-
-      {/* 03 it learns */}
-      <Section n="03" kicker="It learns" title="Paste the letter that refused you. Watch the next pack change.">
-        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
-          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
-            <p>
-              A refusal letter lists reasons: funds not shown to be yours, ties to home not shown, purpose unclear. Prior reads
-              each reason and writes it into your file as a lesson, sealed like every other fact.
-            </p>
-            <p>
-              Then it redrafts. The pack you see afterwards is built to answer those reasons, and the app shows you exactly what
-              moved: documents added, paragraphs added, answers that changed, each pointing at the lesson that caused it.
-            </p>
-          </Reveal>
-          <Reveal delay={120} className="rule-strong">
-            {[
-              ["Reason in the letter", "Not satisfied the funds are genuinely available to you"],
-              ["Lesson on file", "Lesson from United Kingdom refusal on 2023-04-02: prove funds clearly."],
-              ["Change in the pack", "Added to documents: a short note explaining any large deposit in the last three months"],
-            ].map(([k, v], i) => (
-              <div key={k} className="py-5 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
-                <span className="label pt-1" style={i === 2 ? { color: "var(--ice)" } : undefined}>{k}</span>
-                <span className="text-[17px]">{v}</span>
-              </div>
-            ))}
-            <p className="fine mt-4 max-w-[44ch]">From our test refusal letter, word for word. Your own letter produces your own lessons.</p>
-          </Reveal>
-        </div>
-      </Section>
-
-      {/* 04 share */}
-      <Section n="04" kicker="Share for minutes" title="A consultant gets a link that stops working by itself.">
-        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
-          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
-            <p>
-              You choose the minutes. The pack is sealed to a policy on Sui, and the Seal key servers check the Sui clock before
-              every read. When the time passes, they refuse. You can also revoke early.
-            </p>
-            <p>
-              What a consultant already opened stays opened. No system can make someone unsee a page, and Prior says so in the
-              app instead of pretending otherwise.
-            </p>
-          </Reveal>
-          <Reveal delay={120} className="rule-strong">
-            {[
-              ["You pick", "5, 10, 30 or 60 minutes"],
-              ["Sui enforces", "Expiry on the Sui clock, checked on every read"],
-              ["Consultant sees", "The pack, a live countdown, then Access ended"],
-              ["You can", "Revoke early, in one transaction"],
-            ].map(([k, v]) => (
-              <div key={k} className="py-5 border-b border-[var(--rule)] grid gap-1 sm:grid-cols-[200px_1fr]">
-                <span className="label pt-1">{k}</span>
-                <span className="text-[17px]">{v}</span>
-              </div>
-            ))}
-          </Reveal>
-        </div>
-      </Section>
-
-      {/* 05 survives and agents */}
-      <Section n="05" kicker="It survives us" title="Your file lives on Walrus, not in our database.">
-        <div className="grid gap-12 lg:grid-cols-[1fr_1fr]">
-          <Reveal className="space-y-6 text-[19px] sm:text-[21px] leading-[1.45] text-[var(--fg-2)] max-w-[50ch]">
-            <p>
-              The app proves it on purpose. Wipe the copy on your device, press Restore, and every fact comes back from Walrus,
-              decrypted in front of you. If Prior disappeared tomorrow, your history would not.
-            </p>
-            <p>
-              Agents can use it too. A travel agent or booking bot asks Prior for a pack, gets a payment request over MPP, pays
-              0.05 USDC on Sui mainnet, and the pack comes back. The payment is checked onchain through Tatum. No accounts, no
-              keys to hand out.
-            </p>
-            <Link href="/proof" className="link-u text-[var(--fg)] inline-block">See the live record on the proof page</Link>
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="label mb-5">What an agent sees</div>
-            <pre className="mono text-[13px] leading-[1.8] overflow-x-auto border-l-2 border-[var(--ice)] pl-5 text-[var(--fg-2)]">
-{`GET /api/agent/pack
-← 402 Payment Required
-  method   mpp, sui mainnet
-  amount   0.05 USDC
-
-pay → Sui transaction, verified through Tatum
-
-GET /api/agent/pack  (with receipt)
-← 200  { pack }`}
-            </pre>
-          </Reveal>
-        </div>
-      </Section>
+      <Demo />
+      <Agents />
 
       {/* FAQ */}
-      <Section n="06" id="faq" kicker="Questions" title="Asked at the window.">
+      <Section n="03" id="faq" kicker="Questions" title="Asked at the window.">
         <Reveal>
           <FAQ items={FAQ_ITEMS} />
         </Reveal>
