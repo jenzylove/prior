@@ -2,17 +2,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Fact } from "@/components/ui/types";
-import { FileSphere } from "@/components/app/FileSphere";
-import { walrusBlobUrl, suiTxUrl, suiObjectUrl, short } from "@/components/ui/api";
+import { walrusBlobUrl, suiTxUrl, short } from "@/components/ui/api";
 import { KIND_LABEL } from "@/components/app/FactLedger";
 
 /* ─────────────────────────────────────────────────────────────────────
    Replay of a real run on Sui mainnet (Maya, 10 Nov 2026).
    Every id below is real and opens on an explorer. Nothing is invented.
    ───────────────────────────────────────────────────────────────────── */
-
-const HISTORY =
-  "I have worked at Harbor Freight Co as an operations manager since January 2020. I applied for a UK Standard Visitor visa in March 2023 and it was refused on 2023-04-02. On my Schengen application to France, filed on 2024-02-10, I wrote that I started at Harbor Freight Co in March 2019, and I answered No to the question about previous visa refusals.";
 
 const FACTS: (Fact & { blobId: string })[] = [
   { id: "f_qfa83h10xf", kind: "identity", text: "Your name is Maya Chen.", fields: {}, source: "history", blobId: "oDeHs83oLCL2hDX0bzgt3jifK_iex_zL_7JLPmCNQZ4" },
@@ -50,14 +46,7 @@ const ADDED_DOCS = [
   "Employer letter on letterhead: role, salary, approved leave dates and the date you return to work",
   "Proof of what brings you back: property or tenancy, family you support, ongoing studies or business",
 ];
-const NEW_PARA =
-  "On funds: The UK application was refused in part because a large deposit on 1 March 2023 meant the funds were not considered genuinely available.";
 
-const GRANT = {
-  id: "0x0fc21ef6772a12c22852b5ab14e023151a861cb88f717fcd69aff1e515195ab9",
-  tx: "A8nxfJaYGAwTK6mX4VGN6pmmFbbnJoGzP7eXxvCCcaS8",
-  minutes: 2,
-};
 const AGENT = { tx: "GyQDgdTkxVwoWwV17ezoDRkZ5eJ4ywqXhvLNXiEQGbX4", usdc: 0.05 };
 const RESTORED = 16; // 13 facts + 1 refusal + 2 lessons
 
@@ -90,79 +79,7 @@ function Count({ n, delay = 0 }: { n: number; delay?: number }) {
   return <>{v}</>;
 }
 
-function Row({ f, state, i, showId }: { f: (typeof FACTS)[number]; state: "idle" | "sealing" | "sealed"; i: number; showId?: boolean }) {
-  const red = f.kind === "refusal" || f.kind === "lesson";
-  return (
-    <li className="slide-in grid grid-cols-[18px_1fr] gap-x-3 py-2.5 border-b border-[var(--rule)]" style={{ animationDelay: `${i * 60}ms` }}>
-      <span className="pt-[6px]">
-        <span
-          key={state}
-          className={`block w-[8px] h-[8px] rounded-full ${state === "sealing" ? "pulse-ice" : state === "sealed" ? "lock" : ""}`}
-          style={{ background: red ? "var(--red)" : state === "sealing" ? "var(--ice)" : state === "sealed" ? "var(--fg)" : "var(--fg-3)" }}
-        />
-      </span>
-      <div className="min-w-0">
-        <div className="flex gap-2 items-baseline">
-          <span className="label" style={red ? { color: "var(--red)" } : undefined}>{KIND_LABEL[f.kind]}</span>
-          <span className="mono text-[10px] text-[var(--fg-3)] ml-auto">F{i + 1}</span>
-        </div>
-        <p className="text-[14px] leading-snug">{f.text}</p>
-        <div className="mono text-[11px] mt-0.5 min-h-[15px]">
-          {state === "sealed" ? (
-            showId ? <span className="fade-in text-[var(--fg-3)]">Walrus <Ext href={walrusBlobUrl(f.blobId)}>{short(f.blobId, 8, 5)}</Ext></span> : <span className="fade-in text-[var(--fg-3)]">Sealed on Walrus</span>
-          ) : state === "sealing" ? (
-            <span className="text-[var(--ice)]">Encrypting with Seal, writing to Walrus</span>
-          ) : null}
-        </div>
-      </div>
-    </li>
-  );
-}
-
 /* ───────────────────────────── scenes ───────────────────────────── */
-
-function SceneHistory() {
-  const n = useTick(18, HISTORY.length);
-  const done = n >= HISTORY.length;
-  return (
-    <div>
-      <div className="label mb-3">Step 1 · Your history</div>
-      <div className="sheet !min-h-[150px] text-[15px]">
-        {HISTORY.slice(0, n)}
-        {!done && <span className="inline-block w-[2px] h-[1em] bg-[var(--ice)] align-[-2px] ml-0.5 tick" />}
-      </div>
-      <div className="mt-4 flex items-center gap-4">
-        <span className={`btn btn-sm ${done ? "" : "opacity-40"}`} style={{ transition: "opacity .4s" }}>Build my file</span>
-        {done && <span className="fade-in fine">{FACTS.length} facts read from your history</span>}
-      </div>
-    </div>
-  );
-}
-
-function SceneSeal() {
-  const n = useTick(260, FACTS.length + 4); // appear, then seal in a wave
-  const facts = FACTS.slice(0, Math.min(FACTS.length, n));
-  const sealedCount = Math.max(0, n - 3);
-  const withBlob = FACTS.map((f, i) => (i < sealedCount ? f : { ...f, blobId: undefined }));
-  const seals = Object.fromEntries(FACTS.filter((_, i) => i >= sealedCount && i < n - 1).map((f) => [f.id, { state: "sealing" as const, startedAt: 0 }]));
-  return (
-    <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="label">Your file</div>
-          <div className="display text-[26px] mt-1 tnum">{facts.length} facts</div>
-          <div className="text-[13px] mt-1" style={{ color: "var(--ice)" }}>{Math.min(sealedCount, FACTS.length)} sealed on Walrus</div>
-        </div>
-        <FileSphere facts={withBlob.slice(0, facts.length)} seals={seals} size={96} />
-      </div>
-      <ol className="rule mt-3 max-h-[380px] overflow-hidden">
-        {facts.map((f, i) => (
-          <Row key={f.id} f={f} i={i} state={i < sealedCount ? "sealed" : i < n - 1 ? "sealing" : "idle"} showId />
-        ))}
-      </ol>
-    </div>
-  );
-}
 
 function SceneContradiction() {
   const n = useTick(700, 4);
@@ -242,89 +159,8 @@ function SceneLearn() {
               <span className="text-[var(--ice)] mono">+</span><span className="added">{d}</span>
             </li>
           ))}
-          <li className="py-1.5 fine">and 2 more</li>
         </ul>
       )}
-      {n >= 5 && (
-        <p className="slide-in mt-4 text-[14px] leading-relaxed border-l border-[var(--ice)] pl-4">
-          <span className="mono text-[10px] tracking-[0.14em] text-[var(--ice)] block mb-1">NEW IN THE COVER LETTER</span>
-          <span className="added">{NEW_PARA}</span>
-        </p>
-      )}
-    </div>
-  );
-}
-
-function SceneShare() {
-  // the real grant ran for 2 minutes; replayed here in six seconds
-  const n = useTick(100, 60);
-  const left = Math.max(0, 60 - n);
-  const ended = left === 0;
-  const DOTS = 60;
-  const secs = Math.round((left / 60) * GRANT.minutes * 60);
-  const mm = String(Math.floor(secs / 60)).padStart(2, "0"), ss = String(secs % 60).padStart(2, "0");
-  return (
-    <div>
-      <div className="label mb-3">Step 4 · Consultant link</div>
-      <div className="flex items-center gap-6">
-        <svg viewBox="0 0 120 120" width={140} height={140} aria-hidden className="shrink-0">
-          {Array.from({ length: DOTS }).map((_, i) => {
-            const a = (i / DOTS) * Math.PI * 2 - Math.PI / 2;
-            const on = i < left;
-            return <circle key={i} cx={60 + Math.cos(a) * 52} cy={60 + Math.sin(a) * 52} r={on ? 2.4 : 1.2} fill={on ? (left < 12 ? "var(--red)" : "var(--ice)") : "var(--rule-strong)"} style={{ transition: "r .3s, fill .3s" }} />;
-          })}
-          <text x="60" y="66" textAnchor="middle" fontSize="19" fontFamily="var(--font-mono)" fill={ended || left < 12 ? "var(--red)" : "var(--fg)"}>{mm}:{ss}</text>
-        </svg>
-        <div key={ended ? "e" : "l"} className="fade-in">
-          {ended ? (
-            <>
-              <div className="label" style={{ color: "var(--red)" }}>Time is up</div>
-              <div className="display text-[28px] text-[var(--red)] mt-1">The key servers said no.</div>
-              <p className="fine mt-2 max-w-[30ch]">Seal checks the grant against the Sui clock on every read. The pack is gone from the consultant&apos;s page.</p>
-            </>
-          ) : (
-            <>
-              <div className="label">Access left</div>
-              <div className="display text-[28px] mt-1">A pack, shared for {GRANT.minutes} minutes.</div>
-              <p className="fine mt-2 max-w-[30ch]">Two minutes on Sui, replayed here in six seconds.</p>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="mono text-[11px] text-[var(--fg-3)] mt-5 flex flex-wrap gap-x-5 gap-y-1">
-        <span>Grant <Ext href={suiObjectUrl(GRANT.id)}>{short(GRANT.id, 10, 6)}</Ext></span>
-        <span>Created in <Ext href={suiTxUrl(GRANT.tx)}>{short(GRANT.tx, 10, 6)}</Ext></span>
-      </div>
-    </div>
-  );
-}
-
-function SceneRestore() {
-  const n = useTick(130, 44); // 0..12 full list, 13..20 wiping, 21..26 empty, 27.. refill
-  const phase = n < 10 ? "full" : n < 18 ? "wipe" : n < 24 ? "empty" : "refill";
-  const refilled = phase === "refill" ? Math.min(FACTS.length, n - 24) : 0;
-  const shown = phase === "full" ? FACTS : phase === "wipe" ? FACTS.slice(0, Math.max(0, FACTS.length - (n - 10) * 2)) : phase === "empty" ? [] : FACTS.slice(0, refilled);
-  return (
-    <div>
-      <div className="label mb-3">Step 5 · Wipe this device, then restore</div>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="display text-[26px] tnum">
-            {phase === "empty" ? <span className="text-[var(--red)]">0 facts</span> : phase === "refill" && refilled === FACTS.length ? <span className="text-[var(--ice)]">{RESTORED} facts came back</span> : `${shown.length} facts`}
-          </div>
-          <div className="fine mt-1">
-            {phase === "full" && "On this device"}
-            {phase === "wipe" && <span className="text-[var(--red)]">Wiping the local copy</span>}
-            {phase === "empty" && "Nothing on this device. Still on Walrus."}
-            {phase === "refill" && (refilled < FACTS.length ? <span className="text-[var(--ice)]">Downloading and decrypting from Walrus</span> : `${FACTS.length} history facts, 1 refusal, 2 lessons, decrypted and back in your file.`)}
-          </div>
-        </div>
-        <FileSphere facts={shown} seals={{}} size={96} />
-      </div>
-      <ol className="rule mt-3 max-h-[300px] overflow-hidden">
-        {shown.map((f, i) => <Row key={f.id} f={f} i={i} state="sealed" />)}
-        {phase === "empty" && <li className="fine py-6">Local copy wiped.</li>}
-      </ol>
     </div>
   );
 }
@@ -341,15 +177,35 @@ function SceneAgents() {
   );
 }
 
+function SceneDocs() {
+  const n = useTick(650, 4);
+  const DOCS = [["maya-cv.txt", "CV"], ["maya-france-schengen-2024.txt", "Old visa form"], ["maya-uk-refusal-2023.txt", "Refusal letter"]] as const;
+  return (
+    <div>
+      <div className="label mb-3">Drop what you already have</div>
+      <div className="border-l-2 border-[var(--rule-strong)] pl-6 py-6">
+        <p className="text-[18px] font-medium">Drop files here, or click to pick them.</p>
+        <p className="fine mt-1">PDF or text. As many as you like.</p>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2 min-h-[40px]">
+        {DOCS.slice(0, n).map(([name, type], i) => (
+          <span key={name} className="count-up inline-flex items-center gap-2 rounded-full border border-[var(--rule-strong)] pl-4 pr-2 py-1.5 text-[14px]" style={{ animationDelay: `${i * 80}ms` }}>
+            {name}
+            <span className="chip" style={type === "Refusal letter" ? { color: "var(--red)", borderColor: "var(--red)" } : undefined}>{type}</span>
+          </span>
+        ))}
+      </div>
+      {n >= 4 && <span className="btn btn-sm mt-5 fade-in">Check my file</span>}
+    </div>
+  );
+}
+
 /* ───────────────────────────── scroll stage ───────────────────────────── */
 
 const SCENES = [
-  { h: "Your history, in your own words.", l: "Paste it. No forms yet.", S: SceneHistory },
-  { h: "Sealed fact by fact on Walrus.", l: "13 facts, each one a Seal encrypted blob you can open.", S: SceneSeal },
+  { h: "Drop your old forms.", l: "A CV, a past application, a refusal letter. No typing.", S: SceneDocs },
   { h: "The red line an officer would find.", l: "Your 2024 form said No. Your file says refused in 2023.", S: SceneContradiction },
-  { h: "One refusal letter. Five new documents.", l: "Two lessons on file, and the pack redrafted itself.", S: SceneLearn },
-  { h: "Your consultant's link dies on time.", l: "A grant on Sui. The Seal key servers check the clock.", S: SceneShare },
-  { h: "Delete it all. Get it back from Walrus.", l: "Nothing lives in our database.", S: SceneRestore },
+  { h: "One refusal letter. The next pack changes.", l: "Two lessons on file, three new documents to bring.", S: SceneLearn },
 ];
 
 function InView({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -387,7 +243,7 @@ export function Demo() {
         <div>
           {SCENES.map((s, i) => (
             <div key={s.h} data-i={i} ref={(el) => { refs.current[i] = el; }} className="min-h-[78vh] flex flex-col justify-center transition-opacity duration-500" style={{ opacity: active === i ? 1 : 0.25 }}>
-              <span className="mono text-[13px]" style={{ color: active === i ? "var(--ice)" : "var(--fg-3)" }}>0{i + 1} / 06</span>
+              <span className="mono text-[13px]" style={{ color: active === i ? "var(--ice)" : "var(--fg-3)" }}>0{i + 1} / 03</span>
               <h3 className="display text-[44px] xl:text-[54px] mt-3 max-w-[14ch]">{s.h}</h3>
               <p className="mt-4 text-[18px] text-[var(--fg-2)] max-w-[36ch]">{s.l}</p>
               {i === SCENES.length - 1 && <Link href="/app" className="btn mt-8 self-start">Start your file <span className="arrow" aria-hidden>→</span></Link>}
@@ -405,7 +261,7 @@ export function Demo() {
       <div className="lg:hidden">
         {SCENES.map((s, i) => (
           <div key={s.h} className="pt-14 first:pt-4">
-            <span className="mono text-[12px] text-[var(--ice)]">0{i + 1} / 06</span>
+            <span className="mono text-[12px] text-[var(--ice)]">0{i + 1} / 03</span>
             <h3 className="display text-[32px] sm:text-[40px] mt-2">{s.h}</h3>
             <p className="mt-2 text-[16px] text-[var(--fg-2)]">{s.l}</p>
             <InView className="mt-6 border-l border-[var(--rule)] pl-4"><s.S /></InView>

@@ -6,10 +6,21 @@ import { FORM_NAMES } from "@/components/ui/types";
 import { api, suiTxUrl, suiAccountUrl, short, walrusBlobUrl } from "@/components/ui/api";
 import { Countdown } from "@/components/ui/Countdown";
 import { FactRow, type SealState } from "./FactLedger";
-import { FileSphere } from "./FileSphere";
-import { PackView, useFactIndex } from "./PackView";
-import { PackDiff, diffPacks } from "./PackDiff";
-import { Intake } from "./Intake";
+import { PackView, useFactIndex, paragraphs, Cites } from "./PackView";
+import { LetterText } from "./LetterText";
+import { readHistoryFile } from "./readFile";
+import { findContradictions } from "@/lib/core/contradictions";
+import { fillAnswers } from "@/lib/core/fill";
+import { FORMS } from "@/lib/core/forms";
+import { applyLessons } from "@/lib/core/lessons";
+
+/** Red flags without waiting for the model: pure core functions on the merged facts. */
+function quickPack(facts: Fact[], trip: Trip): Pack {
+  const answers = fillAnswers(FORMS[trip.form] ?? [], facts, trip);
+  const contradictions = findContradictions(facts, answers);
+  const base: Pack = { trip, answers, contradictions, coverLetter: { text: "", cites: [] }, checklist: [], lessonsApplied: [], generatedAt: new Date().toISOString() };
+  return applyLessons(base, facts.filter((f) => f.kind === "lesson")).pack;
+}
 
 /* ─────────────────────────── local index ─────────────────────────── */
 
@@ -63,6 +74,28 @@ interface GrantState {
 type Verified = { ok: boolean; status?: string; amountUsdc?: number; timestamp?: string; reason?: string };
 interface AgentBuy { receiptTx: string; verified: Verified; pack: Pack; payer?: string; recipient?: string }
 
+type DocType = "cv" | "past_form" | "refusal";
+interface Doc { id: string; name: string; text: string; type: DocType; href?: string }
+const DOC_LABEL: Record<DocType, string> = { cv: "CV", past_form: "Old visa form", refusal: "Refusal letter" };
+function detectType(text: string): DocType {
+  // forms first: a visa form contains the words "ever been refused", a refusal letter never contains a form header
+  if (/application for|schengen visa|ds.?160|have you ever been refused/i.test(text)) return "past_form";
+  if (/refus|not satisfied|refusal of/i.test(text)) return "refusal";
+  return "cv";
+}
+const SAMPLES: { href: string; name: string }[] = [
+  { href: "/samples/maya-cv.txt", name: "maya-cv.txt" },
+  { href: "/samples/maya-france-schengen-2024.txt", name: "maya-france-schengen-2024.txt" },
+  { href: "/samples/maya-uk-refusal-2023.txt", name: "maya-uk-refusal-2023.txt" },
+];
+const DEST_DEFAULT: Record<FormId, string> = { schengen: "Spain", uk_visitor: "United Kingdom", us_ds160: "United States" };
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+function defaultDates() {
+  const a = new Date(); a.setDate(a.getDate() + 60);
+  const b = new Date(a); b.setDate(b.getDate() + 10);
+  return { start: iso(a), end: iso(b) };
+}
+
 /* ─────────────────────────── small parts ─────────────────────────── */
 
 function ErrorLine({ msg }: { msg: string | null }) {
@@ -73,12 +106,9 @@ function ErrorLine({ msg }: { msg: string | null }) {
     </p>
   );
 }
-
 function Busy({ children }: { children: ReactNode }) {
   return <span className="typing">{children}</span>;
 }
-
-/** Raw ids live behind this. Closed by default, one tap to open. */
 function Details({ label, children }: { label: string; children: ReactNode }) {
   return (
     <details className="acc mt-5 group">
@@ -102,73 +132,21 @@ function Row({ k, children }: { k: string; children: ReactNode }) {
     </div>
   );
 }
-
-type StepStatus = "locked" | "todo" | "active" | "done";
-
-/** One step of the guided flow. Only the active step is open; done steps show a one line summary. */
-function Step({
-  n,
-  title,
-  status,
-  summary,
-  lockNote,
-  onOpen,
-  children,
-  red,
-}: {
-  n: number;
-  title: ReactNode;
-  status: StepStatus;
-  summary?: ReactNode;
-  lockNote?: string;
-  onOpen: () => void;
-  children?: ReactNode;
-  red?: boolean;
-}) {
-  const open = status === "active";
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (open && ref.current) {
-      const top = ref.current.getBoundingClientRect().top + window.scrollY - 24;
-      if (Math.abs(window.scrollY - top) > 120) window.scrollTo({ top, behavior: "smooth" });
-    }
-  }, [open]);
-  const dot =
-    status === "done" ? "var(--ice)" : status === "active" ? (red ? "var(--red)" : "var(--fg)") : status === "todo" ? "var(--fg-3)" : "var(--rule-strong)";
+/** A result block that opens inline. Rules, not boxes. */
+function Fold({ title, hint, open, onToggle, children, tone }: { title: ReactNode; hint?: ReactNode; open: boolean; onToggle: () => void; children: ReactNode; tone?: "ice" | "red" }) {
   return (
-    <section ref={ref} id={`s${n}`} className="scroll-mt-6 border-b border-[var(--rule)]">
-      <button
-        type="button"
-        className="w-full text-left py-6 grid grid-cols-[32px_1fr_auto] gap-4 items-start cursor-pointer disabled:cursor-default"
-        disabled={status === "locked" || open}
-        onClick={onOpen}
-        aria-expanded={open}
-      >
-        <span className="pt-[9px]">
-          <span
-            className="block w-[14px] h-[14px] rounded-full transition-colors duration-500"
-            style={{ background: status === "done" ? "var(--ice)" : "transparent", border: `1.5px solid ${dot}`, boxShadow: open ? `0 0 0 4px ${red ? "var(--red-soft)" : "var(--ice-soft)"}` : undefined }}
-          />
-        </span>
+    <div className="border-b border-[var(--rule)]">
+      <button type="button" className="w-full text-left py-5 flex items-center justify-between gap-4 cursor-pointer" aria-expanded={open} onClick={onToggle}>
         <span className="min-w-0">
-          <span className="label block">Step {n}</span>
-          <span className={`display block text-[28px] sm:text-[38px] mt-1 transition-colors duration-500 ${status === "locked" ? "text-[var(--fg-3)]" : ""}`}>{title}</span>
-          {!open && (
-            <span className="block mt-2 text-[15px] text-[var(--fg-2)]">
-              {status === "locked" ? lockNote : summary}
-            </span>
-          )}
+          <span className="text-[18px] sm:text-[20px] font-medium block">{title}</span>
+          {hint && <span className="block text-[14px] text-[var(--fg-2)] mt-0.5">{hint}</span>}
         </span>
-        {!open && status !== "locked" && (
-          <span className="label pt-3 hidden sm:inline">{status === "done" ? "Open" : "Start"}</span>
-        )}
+        <span className="text-[20px] leading-none transition-transform duration-500 shrink-0" style={{ transform: open ? "rotate(45deg)" : "none", color: open ? (tone === "red" ? "var(--red)" : "var(--ice)") : "var(--fg-3)" }} aria-hidden>+</span>
       </button>
-      <div className="grid transition-[grid-template-rows] duration-700 ease-[cubic-bezier(.2,.8,.2,1)]" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
-        <div className="overflow-hidden">
-          <div className="pb-12 sm:pl-[48px]">{open && children}</div>
-        </div>
+      <div className="grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(.2,.8,.2,1)]" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
+        <div className="overflow-hidden"><div className="pb-8">{open && children}</div></div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -182,8 +160,7 @@ export default function Flow() {
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
   const [pack, setPack] = useState<Pack | null>(null);
-  const [trip, setTrip] = useState<Trip>({ form: "schengen", destination: "", purpose: "Tourism", start: "", end: "" });
-  const [active, setActive] = useState<number>(1);
+  const [trip, setTrip] = useState<Trip>({ form: "schengen", destination: "Spain", purpose: "Tourism", ...defaultDates() });
   const [showIds, setShowIds] = useState(false);
 
   useEffect(() => {
@@ -193,13 +170,10 @@ export default function Flow() {
       save(K.ns, id);
     }
     setNs(id);
-    const f = load<Fact[]>(K.facts) ?? [];
-    const p = load<Pack>(K.pack);
-    setFacts(f);
-    setPack(p);
+    setFacts(load<Fact[]>(K.facts) ?? []);
+    setPack(load<Pack>(K.pack));
     const t = load<Trip>(K.trip);
     if (t) setTrip(t);
-    setActive(f.length === 0 ? 1 : 2);
     setReady(true);
   }, []);
 
@@ -216,13 +190,7 @@ export default function Flow() {
       const clean: Fact = { ...fact };
       delete clean.blobId;
       delete clean.sealedAt;
-      // Walrus writes occasionally fail on the relayer side; retry quietly before showing an error.
-      let r = await api<{ blobId: string; sealedAt: string }>("/api/seal", { ns, fact: clean });
-      for (let attempt = 1; attempt < 3 && !(r.ok && r.data.blobId); attempt++) {
-        if (!r.ok && /limit|too large|invalid/i.test(r.error)) break;
-        await new Promise((res) => setTimeout(res, 1500 * attempt));
-        r = await api<{ blobId: string; sealedAt: string }>("/api/seal", { ns, fact: clean });
-      }
+      const r = await api<{ blobId: string; sealedAt: string }>("/api/seal", { ns, fact: clean });
       if (r.ok && r.data.blobId) {
         setFacts((prev) => prev.map((f) => (f.id === fact.id ? { ...f, blobId: r.data.blobId, sealedAt: r.data.sealedAt } : f)));
         setFresh((s) => new Set(s).add(fact.id));
@@ -241,89 +209,110 @@ export default function Flow() {
   const sealed = facts.filter((f) => f.blobId).length;
   const sealingCount = Object.values(seals).filter((s) => s.state === "sealing").length;
   const unsealed = facts.filter((f) => !f.blobId && seals[f.id]?.state !== "sealing");
+  // auto retry failed seals once things calm down
+  const retried = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const failed = Object.entries(seals).filter(([, s]) => s.state === "error").map(([id]) => id);
+    if (!failed.length) return;
+    const t = setTimeout(() => {
+      for (const id of failed) {
+        if (retried.current.has(id)) continue;
+        retried.current.add(id);
+        const f = facts.find((x) => x.id === id);
+        if (f && !f.blobId) void sealOne(f);
+      }
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [seals, facts, sealOne]);
 
-  /* step 1 */
-  const [history, setHistory] = useState("");
-  const [intakeBusy, setIntakeBusy] = useState(false);
-  const [intakeErr, setIntakeErr] = useState<string | null>(null);
-  const [fileNote] = useState<string | null>(null);
-  const [lastIntake, setLastIntake] = useState<number | null>(null);
-  async function buildFile(text: string = history) {
-    setIntakeErr(null);
-    setIntakeBusy(true);
-    const r = await api<{ facts: Fact[] }>("/api/intake", { ns, text });
-    setIntakeBusy(false);
-    if (!r.ok) return setIntakeErr(r.error);
-    const add = r.data.facts ?? [];
-    if (!add.length) return setIntakeErr("No facts could be read from that text. Add dates, places and employers in plain words.");
-    setFacts((prev) => mergeFacts(prev, add));
-    setLastIntake(add.length);
-    add.forEach((f) => void sealOne(f));
-  }
-
-  function addFacts(add: Fact[]) {
-    if (!add.length) return;
-    setIntakeErr(null);
-    setFacts((prev) => mergeFacts(prev, add));
-    setLastIntake(add.length);
-    add.forEach((f) => void sealOne(f));
-  }
-
-  /* step 2 */
-  const [draftBusy, setDraftBusy] = useState(false);
-  const [draftErr, setDraftErr] = useState<string | null>(null);
-  const tripOk = trip.destination.trim() && trip.start && trip.end && trip.purpose.trim();
-
-  async function draft() {
-    setDraftErr(null);
-    setDraftBusy(true);
-    const r = await api<{ pack: Pack }>("/api/draft", { facts, trip });
-    setDraftBusy(false);
-    if (!r.ok) return setDraftErr(r.error);
-    setPack(r.data.pack);
-    setBefore(null);
-    setAfter(null);
-  }
-
-  /* step 3 */
-  const [letter, setLetter] = useState("");
-  const [refBusy, setRefBusy] = useState<null | "reading" | "redrafting">(null);
-  const [refErr, setRefErr] = useState<string | null>(null);
+  /* ── screen in ── */
+  const [docs, setDocs] = useState<Doc[]>([]);
+  const [drag, setDrag] = useState(false);
+  const [typed, setTyped] = useState(false);
+  const [text, setText] = useState("");
+  const [editDates, setEditDates] = useState(false);
+  const [phase, setPhase] = useState<null | string>(null);
+  const [runErr, setRunErr] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<{ refusal: Fact; lessons: Fact[] } | null>(null);
-  const [before, setBefore] = useState<Pack | null>(null);
-  const [after, setAfter] = useState<Pack | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [doneAt, setDoneAt] = useState<number | null>(null);
+  const [draftPending, setDraftPending] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  async function redraftWith(all: Fact[], base: Pack) {
-    setRefBusy("redrafting");
-    const d = await api<{ pack: Pack }>("/api/draft", { facts: all, trip: base.trip });
-    setRefBusy(null);
-    if (!d.ok) return setRefErr(`The lessons are on file, but the redraft failed: ${d.error}`);
-    setBefore(base);
-    setAfter(d.data.pack);
+  async function takeFiles(list: FileList | File[] | null) {
+    if (!list) return;
+    const added: Doc[] = [];
+    for (const f of Array.from(list)) {
+      const r = await readHistoryFile(f);
+      if (r.ok) added.push({ id: crypto.randomUUID(), name: f.name, text: r.text, type: detectType(r.text) });
+      else setRunErr(r.reason);
+    }
+    setDocs((d) => [...d, ...added]);
+  }
+  const cycle = (t: DocType): DocType => (t === "cv" ? "past_form" : t === "past_form" ? "refusal" : "cv");
+
+  async function run(useDocs: Doc[], useTrip: Trip, freeText?: string) {
+    setRunErr(null);
+    setStartedAt(Date.now());
+    setDoneAt(null);
+    setPack(null);
+    setRefusal(null);
+    const all: Fact[] = [];
+    const errs: string[] = [];
+    setPhase("Reading your documents");
+    const jobs: Promise<void>[] = [];
+    for (const d of useDocs) {
+      if (d.type === "refusal") {
+        jobs.push(api<{ refusal: Fact; lessons: Fact[] }>("/api/refusal", { ns, text: d.text }).then((r) => {
+          if (r.ok) { all.push(r.data.refusal, ...(r.data.lessons ?? [])); setRefusal(r.data); } else errs.push(`${d.name}: ${r.error}`);
+        }));
+      } else {
+        jobs.push(api<{ facts: Fact[] }>("/api/intake", { ns, text: d.text, doc: d.type }).then((r) => {
+          if (r.ok) all.push(...(r.data.facts ?? [])); else errs.push(`${d.name}: ${r.error}`);
+        }));
+      }
+    }
+    if (freeText && freeText.trim().length >= 20) {
+      jobs.push(api<{ facts: Fact[] }>("/api/intake", { ns, text: freeText, doc: "cv" }).then((r) => {
+        if (r.ok) all.push(...(r.data.facts ?? [])); else errs.push(r.error);
+      }));
+    }
+    await Promise.all(jobs);
+    const merged = mergeFacts(facts, all);
+    setFacts(merged);
+    all.forEach((f) => void sealOne(f));
+    if (!merged.length) {
+      setPhase(null);
+      return setRunErr(errs[0] ?? "Nothing could be read from those files. Try a CV, an old form or a refusal letter as PDF or text.");
+    }
+    // show the red flags now, from the pure core, then let the model write the letter
+    setPack(quickPack(merged, useTrip));
+    setDoneAt(Date.now());
+    setDraftPending(true);
+    setPhase(null);
+    if (errs.length) setRunErr(`Some files were skipped: ${errs.join("; ")}`);
+    const d = await api<{ pack: Pack }>("/api/draft", { facts: merged, trip: useTrip });
+    setDraftPending(false);
+    if (!d.ok) return setRunErr(`The flags above are final. The cover letter could not be written: ${d.error}`);
     setPack(d.data.pack);
   }
 
-  async function readRefusal(text: string = letter) {
-    setRefErr(null);
-    setRefBusy("reading");
-    const r = await api<{ refusal: Fact; lessons: Fact[] }>("/api/refusal", { ns, text });
-    if (!r.ok) {
-      setRefBusy(null);
-      return setRefErr(r.error);
+  async function maya() {
+    setRunErr(null);
+    setPhase("Fetching Maya's documents");
+    const loaded: Doc[] = [];
+    for (const s of SAMPLES) {
+      const r = await fetch(s.href, { cache: "no-store" });
+      const t = await r.text();
+      loaded.push({ id: crypto.randomUUID(), name: s.name, text: t, type: detectType(t), href: s.href });
     }
-    const add = [r.data.refusal, ...(r.data.lessons ?? [])];
-    setRefusal(r.data);
-    const all = mergeFacts(facts, add);
-    setFacts(all);
-    add.forEach((f) => void sealOne(f));
-    if (pack) await redraftWith(all, pack);
-    else setRefBusy(null);
+    const t: Trip = { form: "schengen", destination: "Spain", purpose: "Tourism", ...defaultDates() };
+    setDocs(loaded);
+    setTrip(t);
+    await run(loaded, t);
   }
 
-  const diff = useMemo(() => (before && after ? diffPacks(before, after) : null), [before, after]);
-  const showingAfter = !!(after && pack && after.generatedAt === pack.generatedAt);
-
-  /* step 4 */
+  /* ── share ── */
   const [minutes, setMinutes] = useState(10);
   const [share, setShare] = useState<ShareState | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
@@ -373,7 +362,7 @@ export default function Flow() {
     void pollGrant(share.grantId);
   }
 
-  /* step 5 */
+  /* ── restore ── */
   const [wiped, setWiped] = useState<number | null>(null);
   const [restoreBusy, setRestoreBusy] = useState(false);
   const [restoreErr, setRestoreErr] = useState<string | null>(null);
@@ -387,7 +376,6 @@ export default function Flow() {
     setFresh(new Set());
     try { localStorage.removeItem(K.facts); } catch {}
   }
-
   async function restore() {
     setRestoreErr(null);
     setRestoreBusy(true);
@@ -399,7 +387,7 @@ export default function Flow() {
     setRestored((r.data.facts ?? []).length);
   }
 
-  /* agent */
+  /* ── agent ── */
   const [agent, setAgent] = useState<AgentBuy | null>(null);
   const [agentBusy, setAgentBusy] = useState(false);
   const [agentErr, setAgentErr] = useState<string | null>(null);
@@ -414,7 +402,7 @@ export default function Flow() {
   }
 
   function newFile() {
-    if (!confirm("Open a new, empty file? This browser will forget the current file id. Its facts stay sealed on Walrus.")) return;
+    if (!confirm("Start over with a new, empty file? This browser will forget the current file id. Its facts stay sealed on Walrus.")) return;
     const id = newNamespace();
     save(K.ns, id);
     [K.facts, K.pack, K.share].forEach((k) => save(k, null));
@@ -425,379 +413,263 @@ export default function Flow() {
     setPack(null);
     setShare(null);
     setGrant(null);
-    setBefore(null);
-    setAfter(null);
     setRefusal(null);
     setAgent(null);
     setWiped(null);
     setRestored(null);
-    setActive(1);
+    setDocs([]);
+    setDoneAt(null);
+    setRunErr(null);
   }
 
-  /* ─────────────────────────── derived status ─────────────────────────── */
+  /* ── result folds ── */
+  const [open, setOpen] = useState<string | null>(null);
+  const toggle = (k: string) => setOpen((o) => (o === k ? null : k));
+  const [allFlags, setAllFlags] = useState(false);
+  const [allDocs, setAllDocs] = useState(false);
+  const [answersOpen, setAnswersOpen] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
+  const [fileOpen, setFileOpen] = useState(false);
 
-  const hasFacts = facts.length > 0;
-  const st = (n: number, done: boolean, locked: boolean): StepStatus => (active === n ? "active" : locked ? "locked" : done ? "done" : "todo");
-  const s1 = st(1, hasFacts, false);
-  const s2 = st(2, !!pack, ready && !hasFacts);
-  const s3 = st(3, !!refusal, ready && !hasFacts);
-  const s4 = st(4, !!share, ready && !pack);
-  const s5 = st(5, restored !== null, ready && !hasFacts && wiped === null);
-  const s6 = st(6, !!agent, ready && !(pack || tripOk) );
+  const lessons = useMemo(() => facts.filter((f) => f.kind === "lesson"), [facts]);
+  const hasRefusalInput = !!refusal || lessons.length > 0;
   const grantWord = grant ? (grant.revoked ? "revoked" : grant.live ? "live" : "expired") : null;
-  const progress = [hasFacts, !!pack, !!refusal, !!share, restored !== null].filter(Boolean).length;
+  const busy = phase !== null;
+  const canRun = ready && !busy && (docs.length > 0 || text.trim().length >= 20);
 
-  /* ─────────────────────────── the file (aside) ─────────────────────────── */
+  /* ─────────────────────────── render: screen in ─────────────────────────── */
 
-  const fileHead = (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <div className="label">Your file</div>
-        <div className="display text-[26px] mt-1 tnum">
-          {facts.length} {facts.length === 1 ? "fact" : "facts"}
+  if (!pack) {
+    return (
+      <main className="mx-auto max-w-[1200px] px-4 sm:px-8 pb-16">
+        <div className="pt-10 sm:pt-14 max-w-[760px]">
+          <h1 className="display display-tight text-[44px] sm:text-[72px]">Drop what you already have.</h1>
+          <p className="mt-4 text-[17px] sm:text-[19px] text-[var(--fg-2)] max-w-[52ch]">
+            Your CV, old visa forms, refusal letters. Prior finds what an officer would catch.
+          </p>
         </div>
-        <div className="mt-1 text-[13px] text-[var(--fg-2)]">
-          <span style={{ color: sealed ? "var(--ice)" : undefined }}>{sealed} sealed on Walrus</span>
-          {sealingCount > 0 && <span className="text-[var(--ice)] pulse-ice"> · {sealingCount} sealing</span>}
+
+        {/* dropzone */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => { e.preventDefault(); setDrag(false); void takeFiles(e.dataTransfer.files); }}
+          onClick={() => fileRef.current?.click()}
+          className="mt-10 cursor-pointer border-l-2 pl-6 sm:pl-8 py-8 sm:py-10 transition-colors"
+          style={{ borderColor: drag ? "var(--ice)" : "var(--rule-strong)" }}
+          role="button"
+          aria-label="Drop files or click to pick them"
+        >
+          <p className="text-[20px] sm:text-[24px] font-medium">Drop files here, or click to pick them.</p>
+          <p className="fine mt-1">PDF or text. As many as you like. Nothing is stored in plain text; what is kept is Seal ciphertext on Walrus.</p>
+          <input ref={fileRef} type="file" multiple accept=".txt,.md,.text,.pdf,text/plain,application/pdf" className="hidden" onChange={(e) => { void takeFiles(e.target.files); e.target.value = ""; }} />
         </div>
-      </div>
-      <FileSphere facts={facts} seals={seals} size={120} focusId={focus?.id} />
-    </div>
-  );
 
-  const ledgerList = (
-    <>
-      {facts.length === 0 ? (
-        <p className="fine py-5">
-          {wiped !== null
-            ? "Local copy wiped. Nothing is on this device now. Restore it from Walrus in step 5."
-            : "Nothing on file yet. Your history becomes facts here, and each one is sealed on Walrus."}
-        </p>
-      ) : (
-        <ol>
-          {facts.map((f, i) => (
-            <FactRow
-              key={f.id}
-              fact={f}
-              index={i}
-              seal={seals[f.id]}
-              fresh={fresh.has(f.id)}
-              focused={focus?.id === f.id ? focus.n : undefined}
-              onRetry={() => void sealOne(f)}
-              delay={restored !== null ? i * 70 : 0}
-              showIds={showIds}
-            />
-          ))}
-        </ol>
-      )}
-      {unsealed.length > 0 && sealingCount === 0 && (
-        <button className="btn btn-ghost btn-sm mt-4" onClick={() => unsealed.forEach((f) => void sealOne(f))}>
-          Seal {unsealed.length} more on Walrus
-        </button>
-      )}
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 fine">
-        <button className="link-u cursor-pointer" onClick={() => setShowIds((v) => !v)}>
-          {showIds ? "Hide Walrus ids" : "Show Walrus ids"}
-        </button>
-        <button className="link-u cursor-pointer" onClick={newFile}>Open a new, empty file</button>
-      </div>
-      {showIds && (
-        <p className="mono text-[11px] text-[var(--fg-3)] mt-3 break-id">File id {ready ? ns : "…"}. Keep it private.</p>
-      )}
-    </>
-  );
+        {docs.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {docs.map((d) => (
+              <span key={d.id} className="slide-in inline-flex items-center gap-2 rounded-full border border-[var(--rule-strong)] pl-4 pr-2 py-1.5 text-[14px]">
+                <span className="truncate max-w-[200px]">{d.name}</span>
+                <button type="button" className="chip" style={{ color: d.type === "refusal" ? "var(--red)" : undefined, borderColor: d.type === "refusal" ? "var(--red)" : undefined }} title="Tap to change the type" onClick={(e) => { e.stopPropagation(); setDocs((ds) => ds.map((x) => (x.id === d.id ? { ...x, type: cycle(x.type) } : x))); }}>
+                  {DOC_LABEL[d.type]}
+                </button>
+                {d.href && <a className="fine link-u" href={d.href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>see the file</a>}
+                <button type="button" aria-label={`Remove ${d.name}`} className="w-6 h-6 rounded-full grid place-items-center text-[var(--fg-3)] hover:text-[var(--fg)] cursor-pointer" onClick={() => setDocs((ds) => ds.filter((x) => x.id !== d.id))}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
 
-  const aside = (
-    <aside className="hidden lg:block lg:col-start-2 lg:row-start-1 min-w-0">
-      <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto pr-2 -mr-2">
-        {fileHead}
-        <div className="rule mt-4" />
-        {ledgerList}
-      </div>
-    </aside>
-  );
+        {/* where next */}
+        <div className="mt-10">
+          <div className="label mb-3">Where next?</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(["schengen", "uk_visitor", "us_ds160"] as FormId[]).map((f) => {
+              const on = trip.form === f;
+              const label = f === "schengen" ? "Schengen" : f === "uk_visitor" ? "UK" : "US";
+              return (
+                <button key={f} type="button" onClick={() => setTrip({ ...trip, form: f, destination: DEST_DEFAULT[f] })} className="text-[16px] sm:text-[17px] px-5 py-2.5 rounded-full border cursor-pointer transition-colors"
+                  style={{ borderColor: on ? "var(--fg)" : "var(--rule-strong)", background: on ? "var(--fg)" : "transparent", color: on ? "var(--bg)" : "var(--fg-2)" }}>
+                  {label}
+                </button>
+              );
+            })}
+            <input className="field !w-[200px] ml-2" aria-label="Destination" value={trip.destination} onChange={(e) => setTrip({ ...trip, destination: e.target.value })} placeholder="Destination" />
+          </div>
+          <p className="fine mt-3">
+            {trip.purpose}, {trip.start} to {trip.end}.{" "}
+            <button type="button" className="link-u cursor-pointer" onClick={() => setEditDates((v) => !v)}>{editDates ? "done" : "change dates"}</button>
+          </p>
+          {editDates && (
+            <div className="slide-in mt-3 flex flex-wrap gap-6">
+              <label className="block"><span className="label">Purpose</span><input className="field !w-[180px]" value={trip.purpose} onChange={(e) => setTrip({ ...trip, purpose: e.target.value })} /></label>
+              <label className="block"><span className="label">Arrive</span><input type="date" className="field !w-[180px]" value={trip.start} onChange={(e) => setTrip({ ...trip, start: e.target.value })} /></label>
+              <label className="block"><span className="label">Leave</span><input type="date" className="field !w-[180px]" value={trip.end} min={trip.start || undefined} onChange={(e) => setTrip({ ...trip, end: e.target.value })} /></label>
+            </div>
+          )}
+        </div>
 
-  /* ─────────────────────────── render ─────────────────────────── */
+        {/* actions */}
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <button className="btn" disabled={!canRun} onClick={() => void run(docs, trip, typed ? text : undefined)}>
+            {busy ? <Busy>{phase}</Busy> : "Check my file"}
+          </button>
+          <button className="btn btn-ghost" disabled={busy || !ready} onClick={() => void maya()}>Try Maya&apos;s documents</button>
+          <span className="fine flex gap-3">
+            {SAMPLES.map((s) => <a key={s.href} className="link-u" href={s.href} target="_blank" rel="noreferrer">{s.name.replace("maya-", "").replace(".txt", "")}</a>)}
+          </span>
+        </div>
+        {busy && (
+          <p className="mt-5 text-[15px] text-[var(--fg-2)] scan inline-block pr-8">{phase}</p>
+        )}
+        <ErrorLine msg={runErr} />
+
+        <div className="mt-8">
+          <button type="button" className="fine link-u cursor-pointer" onClick={() => setTyped((v) => !v)}>{typed ? "Hide the text box" : "Or type it instead"}</button>
+          {typed && (
+            <textarea className="sheet mt-4 slide-in" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder="I have worked at Harbor Freight Co as an operations manager since January 2020. In March 2023 I applied for a UK visitor visa and it was refused in April…" />
+          )}
+        </div>
+
+        {facts.length > 0 && !busy && (
+          <p className="fine mt-10">
+            {facts.length} facts already on this file from before, {sealed} sealed on Walrus.{" "}
+            <button className="link-u cursor-pointer" onClick={() => void (async () => { setPhase(`Checking ${facts.length} facts`); const d = await api<{ pack: Pack }>("/api/draft", { facts, trip }); setPhase(null); if (d.ok) { setPack(d.data.pack); setDoneAt(Date.now()); } else setRunErr(d.error); })()}>Check them against this trip</button>
+            {" · "}
+            <button className="link-u cursor-pointer" onClick={newFile}>Start over</button>
+          </p>
+        )}
+      </main>
+    );
+  }
+
+  /* ─────────────────────────── render: screen out ─────────────────────────── */
+
+  const flags = pack.contradictions;
+  const filled = pack.answers.filter((a) => a.status === "filled").length;
+  const needs = pack.answers.filter((a) => a.status === "needs_input").length;
+  const paras = paragraphs(pack.coverLetter.text);
+  const addedDocs = pack.checklist.filter((c) => c.cites.some((id) => lessons.some((l) => l.id === id)));
+  const bring = addedDocs.length ? addedDocs : pack.checklist;
 
   return (
     <main className="mx-auto max-w-[1200px] px-4 sm:px-8 pb-16">
-      <div className="pt-10 sm:pt-16 pb-6">
-        <div className="label">Your file · {progress} of 5 done</div>
-        <h1 className="display display-tight text-[44px] sm:text-[72px] mt-3">Your visa file.</h1>
-        <p className="mt-4 text-[17px] sm:text-[19px] text-[var(--fg-2)] max-w-[52ch]">
-          Build it once. Every application after this one is drafted from it and checked against it.
+      {/* top line */}
+      <div className="pt-8 sm:pt-10 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <p className="text-[14px] text-[var(--fg-2)]">
+          {FORM_NAMES[pack.trip.form]} · {pack.trip.destination} · {pack.trip.start} to {pack.trip.end}
+          {doneAt && startedAt && <span className="text-[var(--fg-3)]"> · checked in {Math.round((doneAt - startedAt) / 1000)} s</span>}
         </p>
-        <div className="mt-6 flex gap-1" aria-hidden>
-          {[hasFacts, !!pack, !!refusal, !!share, restored !== null].map((d, i) => (
-            <span key={i} className="h-[3px] flex-1 rounded-full transition-colors duration-700" style={{ background: d ? "var(--ice)" : active === i + 1 ? "var(--fg)" : "var(--rule-strong)" }} />
-          ))}
-        </div>
+        <p className="text-[13px] tnum" aria-live="polite">
+          {sealingCount > 0 ? (
+            <span className="text-[var(--ice)]">Sealing {facts.length} facts on Walrus… {sealed} done</span>
+          ) : unsealed.length > 0 ? (
+            <span className="text-[var(--red)]">{unsealed.length} not sealed yet. <button className="link-u cursor-pointer" onClick={() => unsealed.forEach((f) => void sealOne(f))}>Retry</button></span>
+          ) : (
+            <span className="text-[var(--ice)]">{sealed} facts sealed on Walrus ✓ <button className="link-u cursor-pointer text-[var(--fg-3)] ml-1" onClick={() => { setShowIds(true); setFileOpen(true); }}>show ids</button></span>
+          )}
+        </p>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px] lg:gap-x-16">
-        <div className="lg:col-start-1 rule-strong">
-          {/* 1 */}
-          <Step
-            n={1}
-            title="Build your file"
-            status={s1}
-            summary={hasFacts ? <>{facts.length} entries on your timeline, <span style={{ color: "var(--ice)" }}>{sealed} sealed on Walrus</span>{sealingCount > 0 ? `, ${sealingCount} sealing` : ""}.</> : "Every job, trip and application, on one timeline."}
-            onOpen={() => setActive(1)}
-          >
-            <p className="lede max-w-[58ch]">
-              Every job, trip and application you have, on one timeline. Each entry is sealed on Walrus as you add it.
-            </p>
-            <Intake
-              facts={facts}
-              seals={seals}
-              focusId={focus?.id}
-              busy={intakeBusy || !ready || refBusy === "reading"}
-              onAdd={addFacts}
-              onFreeText={(t) => { setHistory(t); void buildFile(t); }}
-              onDocument={(t, isRef) => { if (isRef) { setLetter(t); void readRefusal(t); } else { setHistory(t); void buildFile(t); } }}
-              note={fileNote}
-            />
-            <ErrorLine msg={intakeErr} />
-            {refErr && <ErrorLine msg={refErr} />}
+      {/* 1 what an officer would catch */}
+      <section className="mt-8 sm:mt-10">
+        <h1 className="display display-tight text-[40px] sm:text-[64px]" style={{ color: flags.length ? "var(--red)" : undefined }}>
+          {flags.length === 0 ? "Nothing an officer would catch." : flags.length === 1 ? "One thing an officer would catch." : `${flags.length} things an officer would catch.`}
+        </h1>
+        {flags.length === 0 ? (
+          <p className="mt-3 text-[17px] text-[var(--fg-2)] max-w-[56ch]">Every answer in this draft agrees with your file.</p>
+        ) : (
+          <ol className="mt-6 border-t border-[var(--red)]">
+            {(allFlags ? flags : flags.slice(0, 3)).map((c, i) => (
+              <li key={c.id} className="slide-in py-5 border-b border-[var(--rule)] grid grid-cols-[28px_1fr] gap-3" style={{ animationDelay: `${i * 90}ms` }}>
+                <span className="mono text-[12px] pt-1.5 text-[var(--red)]">{i + 1}</span>
+                <div>
+                  <p className="text-[18px] sm:text-[20px] leading-snug font-medium">{c.summary}</p>
+                  <p className="mt-2 text-[15px] sm:text-[16px] text-[var(--fg-2)]"><span className="label !text-[var(--fg)] mr-2">Fix</span>{c.fix}</p>
+                  <Cites ids={c.factIds} index={index} onFocus={(id) => { onFocus(id); setFileOpen(true); }} />
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+        {flags.length > 3 && (
+          <button className="fine link-u cursor-pointer mt-3" onClick={() => setAllFlags((v) => !v)}>{allFlags ? "Show fewer" : `Show all ${flags.length}`}</button>
+        )}
+      </section>
 
-            {lastIntake !== null && !intakeErr && sealingCount > 0 && (
-              <p className="slide-in mt-6 text-[15px] text-[var(--fg-2)]">
-                Each entry is being encrypted with Seal and written to Walrus mainnet, about twenty seconds each, all at once. Watch the marks lock.
-              </p>
-            )}
-
-            {hasFacts && (
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <button className="btn btn-ice" onClick={() => setActive(2)}>
-                  Continue to your trip <span className="arrow" aria-hidden>→</span>
-                </button>
-                {sealingCount > 0 && <span className="fine">Sealing carries on in the background.</span>}
-              </div>
-            )}
-
-            {hasFacts && (
-              <div className="mt-8 lg:hidden">
-                {fileHead}
-                <div className="rule mt-4" />
-                {ledgerList}
-              </div>
-            )}
-            <p className="fine mt-6 max-w-[60ch]">
-              Entries you add here never touch a model. Documents and free text are read once by the drafting model and the memory relayer; neither stores them. What is kept is Seal ciphertext on Walrus.
-            </p>
-          </Step>
-
-          {/* 2 */}
-          <Step
-            n={2}
-            title="Your trip"
-            status={s2}
-            lockNote="Build your file in step 1 first. Prior only answers from what is on file."
-            summary={
-              pack ? (
-                <>
-                  {FORM_NAMES[pack.trip.form]}, {pack.trip.destination}. {pack.answers.length} answers,{" "}
-                  <span style={{ color: pack.contradictions.length ? "var(--red)" : undefined }}>
-                    {pack.contradictions.length} {pack.contradictions.length === 1 ? "contradiction" : "contradictions"}
-                  </span>.
-                </>
-              ) : (
-                "Pick a form and a trip. Get a pack where every answer cites your file."
-              )
-            }
-            onOpen={() => setActive(2)}
-          >
-            <p className="lede max-w-[58ch]">Pick the form and the trip. Every answer is drafted from your file and cites the fact it came from.</p>
-            <fieldset className="mt-7">
-              <legend className="label mb-3">Form</legend>
-              <div className="flex flex-wrap gap-x-7 gap-y-2 border-b border-[var(--rule)]">
-                {(Object.keys(FORM_NAMES) as FormId[]).map((f) => (
-                  <label key={f} className="cursor-pointer pb-3 -mb-px border-b-2 transition-colors" style={{ borderColor: trip.form === f ? "var(--ice)" : "transparent" }}>
-                    <input type="radio" name="form" className="sr-only" checked={trip.form === f} onChange={() => setTrip({ ...trip, form: f })} />
-                    <span className={`text-[17px] sm:text-[19px] font-medium ${trip.form === f ? "" : "text-[var(--fg-3)]"}`}>{FORM_NAMES[f]}</span>
-                  </label>
+      {/* 2 what your refusal taught it */}
+      {hasRefusalInput && (
+        <section className="mt-14">
+          <h2 className="display text-[28px] sm:text-[40px]">What your refusal taught it.</h2>
+          <ul className="mt-4 space-y-2">
+            {lessons.map((l) => (
+              <li key={l.id} className="grid grid-cols-[18px_1fr] gap-3 text-[16px] sm:text-[17px]">
+                <span className="w-2 h-2 rounded-full bg-[var(--red)] mt-2" />
+                <span>{l.text}</span>
+              </li>
+            ))}
+          </ul>
+          {bring.length > 0 && (
+            <>
+              <div className="label mt-7 mb-2">Bring these</div>
+              <ul className="rule-strong">
+                {(allDocs ? bring : bring.slice(0, 3)).map((c) => (
+                  <li key={c.item} className="py-3 border-b border-[var(--rule)] grid grid-cols-[18px_1fr] gap-3">
+                    <span className="mono text-[var(--ice)]">+</span>
+                    <div>
+                      <div className="text-[16px]">{c.item}</div>
+                      <div className="text-[13.5px] text-[var(--fg-2)]">{c.why}</div>
+                    </div>
+                  </li>
                 ))}
-              </div>
-            </fieldset>
-            <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2 mt-7">
-              <label className="block">
-                <span className="label">Destination</span>
-                <input className="field" value={trip.destination} onChange={(e) => setTrip({ ...trip, destination: e.target.value })} placeholder="France" />
-              </label>
-              <label className="block">
-                <span className="label">Purpose</span>
-                <input className="field" list="purposes" value={trip.purpose} onChange={(e) => setTrip({ ...trip, purpose: e.target.value })} placeholder="Tourism" />
-                <datalist id="purposes">
-                  {["Tourism", "Visiting family", "Business", "Conference", "Medical", "Study visit"].map((p) => <option key={p} value={p} />)}
-                </datalist>
-              </label>
-              <label className="block">
-                <span className="label">Arrive</span>
-                <input type="date" className="field" value={trip.start} onChange={(e) => setTrip({ ...trip, start: e.target.value })} />
-              </label>
-              <label className="block">
-                <span className="label">Leave</span>
-                <input type="date" className="field" value={trip.end} min={trip.start || undefined} onChange={(e) => setTrip({ ...trip, end: e.target.value })} />
-              </label>
-            </div>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <button className="btn" disabled={!tripOk || draftBusy || facts.length === 0} onClick={draft}>
-                {draftBusy ? <Busy>Drafting from your file</Busy> : pack ? "Draft again" : "Draft my application"}
-              </button>
-              {!tripOk && <span className="fine">Add a destination and both dates.</span>}
-            </div>
-            <ErrorLine msg={draftErr} />
+              </ul>
+              {bring.length > 3 && (
+                <button className="fine link-u cursor-pointer mt-3" onClick={() => setAllDocs((v) => !v)}>{allDocs ? "Fewer" : `${bring.length - 3} more`}</button>
+              )}
+            </>
+          )}
+        </section>
+      )}
 
-            {pack && (
-              <div className="mt-12">
-                {showingAfter && diff && (
-                  <p className="mb-5 mono text-[11px] tracking-[0.12em] text-[var(--ice)] uppercase">
-                    This is the redraft. Lines marked new came from your refusal lessons.
-                  </p>
-                )}
-                <PackView
-                  pack={pack}
-                  index={index}
-                  onFocus={onFocus}
-                  newChecklist={showingAfter && diff ? new Set(diff.addedChecklist.map((c) => c.item)) : undefined}
-                  newParagraphs={showingAfter && diff ? new Set(diff.addedParas) : undefined}
-                />
-                <div className="mt-10 flex flex-wrap items-center gap-4">
-                  <button className="btn btn-ice" onClick={() => setActive(3)}>
-                    Next: got refused before? <span className="arrow" aria-hidden>→</span>
-                  </button>
-                  <button className="btn btn-ghost" onClick={() => setActive(4)}>Share with a consultant</button>
-                </div>
-              </div>
-            )}
-          </Step>
-
-          {/* 3 */}
-          <Step
-            n={3}
-            title={<>Got refused <span className="text-[var(--red)]">before?</span></>}
-            status={s3}
-            red
-            lockNote="Build your file in step 1 first."
-            summary={
-              refusal ? (
-                <>Refusal on file, {refusal.lessons.length} {refusal.lessons.length === 1 ? "lesson" : "lessons"} learned{diff ? `, ${diff.addedChecklist.length + diff.addedParas.length + diff.changedAnswers.length} changes in the pack` : ""}.</>
-              ) : (
-                "Paste the letter. Each reason becomes a lesson and the pack is redrafted."
-              )
-            }
-            onOpen={() => setActive(3)}
+      {/* 3 your application, drafted */}
+      <section className="mt-14">
+        <h2 className="display text-[28px] sm:text-[40px]">Your application, drafted.</h2>
+        <p className="mt-2 text-[16px] sm:text-[17px] text-[var(--fg-2)]">
+          <span className="text-[var(--fg)] tnum">{filled} of {pack.answers.length}</span> answers drafted from your file, <span className="tnum">{needs}</span> need you.
+        </p>
+        <div className="mt-5 rule-strong">
+          <Fold title="Open the answers" hint="Grouped by section of the form. Every answer cites the fact it came from." open={answersOpen} onToggle={() => setAnswersOpen((v) => !v)}>
+            <PackView pack={pack} index={index} onFocus={(id) => { onFocus(id); setFileOpen(true); }} newParagraphs={new Set(lessons.length ? paras.filter((p) => lessons.some((l) => p.includes(l.id))) : [])} />
+          </Fold>
+          <Fold
+            title={draftPending ? <span className="typing">Writing your cover letter</span> : "Cover letter"}
+            hint={draftPending ? "The model is drafting it from your file. The flags above do not depend on it." : !letterOpen && paras[0] ? <span className="line-clamp-2"><LetterText text={paras[0]} index={index} /></span> : undefined}
+            open={letterOpen}
+            onToggle={() => setLetterOpen((v) => !v)}
           >
-            <p className="lede max-w-[58ch]">Paste the refusal letter. Each reason becomes a lesson in your file, and your pack is redrafted to answer it.</p>
-            <textarea
-              id="letter"
-              className="sheet mt-7"
-              style={{ borderLeftColor: "var(--red)", minHeight: 200 }}
-              rows={7}
-              value={letter}
-              onChange={(e) => setLetter(e.target.value)}
-              placeholder={"Paste the full text of the letter, including the reasons. For example: \"You have not provided sufficient evidence of your employment and the funds available to you…\""}
-            />
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <button className="btn btn-red" disabled={!!refBusy || letter.trim().length < 30} onClick={() => void readRefusal()}>
-                {refBusy === "reading" ? <Busy>Reading the letter</Busy> : refBusy === "redrafting" ? <Busy>Redrafting with the lessons</Busy> : "Learn from this refusal"}
-              </button>
-              {!pack && <span className="fine">Draft a pack in step 2 first to see what changes.</span>}
+            <div className="space-y-4 text-[16px] sm:text-[17px] leading-[1.6] max-w-[66ch] border-l border-[var(--rule-strong)] pl-6">
+              {paras.map((p, i) => <p key={i}><LetterText text={p} index={index} /></p>)}
             </div>
-            <ErrorLine msg={refErr} />
+          </Fold>
+        </div>
+      </section>
 
-            {refusal && (
-              <div className="mt-12 slide-in">
-                <div className="label" style={{ color: "var(--red)" }}>On file now</div>
-                <p className="display text-[24px] sm:text-[30px] mt-2 max-w-[40ch]">{refusal.refusal.text}</p>
-                {refusal.refusal.fields?.reasonCodes?.length ? (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {refusal.refusal.fields.reasonCodes.map((c) => (
-                      <span key={c} className="chip chip-red" style={{ cursor: "default" }}>{c.replace(/_/g, " ")}</span>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="mt-8">
-                  <div className="label mb-2">Lessons written to your file</div>
-                  <ol className="rule-strong">
-                    {refusal.lessons.map((l, i) => (
-                      <li key={l.id} className="slide-in py-3.5 border-b border-[var(--rule)] grid grid-cols-[30px_1fr] gap-2" style={{ animationDelay: `${i * 90}ms` }}>
-                        <span className="mono text-[12px] text-[var(--red)] pt-1">L{i + 1}</span>
-                        <span className="text-[17px]">{l.text}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </div>
-            )}
-
-            {refBusy === "redrafting" && (
-              <p className="mt-10 text-[17px] text-[var(--fg-2)] scan inline-block pr-6">Redrafting the pack with the lessons</p>
-            )}
-
-            {before && after && (
-              <div className="mt-14">
-                <PackDiff before={before} after={after} lessons={refusal?.lessons ?? []} index={index} onFocus={onFocus} />
-                <div className="mt-10 flex flex-wrap items-center gap-4">
-                  <button className="btn btn-ice" onClick={() => setActive(4)}>
-                    Share the new pack with a consultant <span className="arrow" aria-hidden>→</span>
-                  </button>
-                  <button className="btn btn-ghost" onClick={() => setActive(2)}>Read the full redraft</button>
-                </div>
-              </div>
-            )}
-            {refusal && !before && pack && !refBusy && (
-              <button className="btn mt-8" onClick={() => void redraftWith(facts, pack)}>Redraft with the lessons</button>
-            )}
-          </Step>
-
-          {/* 4 */}
-          <Step
-            n={4}
-            title="Share with a consultant"
-            status={s4}
-            lockNote="Draft a pack in step 2 first. That is what gets shared."
-            summary={
-              share ? (
-                <>Link made for {Math.round((share.expiresMs - share.createdAt) / 60000)} minutes. Access is <span style={{ color: grantWord === "live" ? "var(--ice)" : "var(--red)" }}>{grantWord ?? "being read from Sui"}</span>.</>
-              ) : (
-                "A link that works for minutes. Access ends on the Sui clock."
-              )
-            }
-            onOpen={() => setActive(4)}
-          >
-            <p className="lede max-w-[58ch]">
-              Give a consultant a link that works for minutes, not forever. The pack is sealed to a policy on Sui; when the Sui clock
-              passes the end time, the key servers stop releasing it.
-            </p>
-            <div className="mt-8 flex flex-wrap items-end gap-8">
+      {/* 4 actions, inline */}
+      <section className="mt-14">
+        <div className="label mb-2">Do more with this file</div>
+        <div className="rule-strong">
+          <Fold title="Share with a consultant" hint={share ? <>Link made for {Math.round((share.expiresMs - share.createdAt) / 60000)} minutes. Access is <span style={{ color: grantWord === "live" ? "var(--ice)" : "var(--red)" }}>{grantWord ?? "being read from Sui"}</span>.</> : "A link that works for minutes. Access ends on the Sui clock."} open={open === "share"} onToggle={() => toggle("share")}>
+            <div className="flex flex-wrap items-end gap-8">
               <div>
                 <div className="label mb-3">For how long</div>
                 <div className="flex items-center gap-1.5">
                   {[5, 10, 30, 60].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMinutes(m)}
-                      className="mono text-[14px] px-3.5 py-2 rounded-full border cursor-pointer transition-colors"
-                      style={{
-                        borderColor: minutes === m ? "var(--fg)" : "var(--rule-strong)",
-                        background: minutes === m ? "var(--fg)" : "transparent",
-                        color: minutes === m ? "var(--bg)" : "var(--fg-2)",
-                      }}
-                    >
+                    <button key={m} type="button" onClick={() => setMinutes(m)} className="mono text-[14px] px-3.5 py-2 rounded-full border cursor-pointer transition-colors"
+                      style={{ borderColor: minutes === m ? "var(--fg)" : "var(--rule-strong)", background: minutes === m ? "var(--fg)" : "transparent", color: minutes === m ? "var(--bg)" : "var(--fg-2)" }}>
                       {m}
                     </button>
                   ))}
-                  <input
-                    type="number"
-                    min={1}
-                    max={60}
-                    aria-label="Minutes"
-                    className="field !w-[72px] ml-2 text-center"
-                    value={minutes}
-                    onChange={(e) => setMinutes(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
-                  />
+                  <input type="number" min={1} max={60} aria-label="Minutes" className="field !w-[72px] ml-2 text-center" value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.min(60, Number(e.target.value) || 1)))} />
                   <span className="label ml-1">min</span>
                 </div>
               </div>
@@ -806,29 +678,16 @@ export default function Flow() {
               </button>
             </div>
             <ErrorLine msg={shareErr} />
-
             {share && (
-              <div className="mt-12 slide-in">
+              <div className="mt-10 slide-in">
                 <div className="label mb-2">Consultant link</div>
                 <div className="flex flex-wrap items-stretch rounded-full border border-[var(--rule-strong)] overflow-hidden">
                   <code className="mono text-[12.5px] px-4 py-3 flex-1 min-w-0 truncate">{share.link}</code>
-                  <button
-                    className="label px-4 border-l border-[var(--rule-strong)] cursor-pointer hover:text-[var(--fg)]"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(share.link);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 1500);
-                      } catch {}
-                    }}
-                  >
+                  <button className="label px-4 border-l border-[var(--rule-strong)] cursor-pointer hover:text-[var(--fg)]" onClick={async () => { try { await navigator.clipboard.writeText(share.link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} }}>
                     {copied ? "Copied" : "Copy"}
                   </button>
-                  <a className="label px-4 border-l border-[var(--rule-strong)] grid place-items-center hover:text-[var(--fg)]" href={share.link} target="_blank" rel="noreferrer">
-                    Open
-                  </a>
+                  <a className="label px-4 border-l border-[var(--rule-strong)] grid place-items-center hover:text-[var(--fg)]" href={share.link} target="_blank" rel="noreferrer">Open</a>
                 </div>
-
                 <div className="mt-10">
                   {grant?.revoked ? (
                     <div>
@@ -840,26 +699,17 @@ export default function Flow() {
                     <Countdown expiresMs={grant?.expiresMs ?? share.expiresMs} totalMs={share.expiresMs - share.createdAt} />
                   )}
                 </div>
-
                 <p className="mt-6 text-[15px] text-[var(--fg-2)]">
                   Status on Sui:{" "}
-                  {grant ? (
-                    <span style={{ color: grant.revoked || !grant.live ? "var(--red)" : "var(--ice)" }}>{grantWord}</span>
-                  ) : grantErr ? (
-                    <span className="text-[var(--red)]">{grantErr}</span>
-                  ) : (
-                    <Busy>reading</Busy>
-                  )}
+                  {grant ? <span style={{ color: grant.revoked || !grant.live ? "var(--red)" : "var(--ice)" }}>{grantWord}</span> : grantErr ? <span className="text-[var(--red)]">{grantErr}</span> : <Busy>reading</Busy>}
                   {grant?.readVia && <span className="text-[var(--fg-3)]"> · read via {grant.readVia}</span>}
                 </p>
-
                 {!grant?.revoked && (grant ? grant.live : true) && (
                   <button className="btn btn-ghost mt-6" style={{ color: "var(--red)", borderColor: "var(--red)" }} disabled={revokeBusy} onClick={revoke}>
                     {revokeBusy ? <Busy>Revoking on Sui</Busy> : "Revoke now"}
                   </button>
                 )}
                 <p className="fine mt-4 max-w-[60ch]">Revoking or expiry stops new reads. It cannot make a consultant unsee what they already opened.</p>
-
                 <Details label="Onchain details">
                   <Row k="Grant"><a className="link-u" href={`https://suivision.xyz/object/${share.grantId}`} target="_blank" rel="noreferrer">{share.grantId}</a></Row>
                   <Row k="Created in"><a className="link-u" href={suiTxUrl(share.txDigest)} target="_blank" rel="noreferrer">{share.txDigest}</a></Row>
@@ -867,120 +717,46 @@ export default function Flow() {
                   {(grant?.consultant || share.consultantAddress) && (
                     <Row k="Consultant key"><a className="link-u" href={suiAccountUrl(grant?.consultant ?? share.consultantAddress!)} target="_blank" rel="noreferrer">{grant?.consultant ?? share.consultantAddress}</a></Row>
                   )}
-                  {share.revokeTx && (
-                    <Row k="Revoked in"><a className="link-u text-[var(--red)]" href={suiTxUrl(share.revokeTx)} target="_blank" rel="noreferrer">{share.revokeTx}</a></Row>
-                  )}
+                  {share.revokeTx && <Row k="Revoked in"><a className="link-u text-[var(--red)]" href={suiTxUrl(share.revokeTx)} target="_blank" rel="noreferrer">{share.revokeTx}</a></Row>}
                 </Details>
-
-                <div className="mt-10">
-                  <button className="btn btn-ghost" onClick={() => setActive(5)}>
-                    Next: does it survive us? <span className="arrow" aria-hidden>→</span>
-                  </button>
-                </div>
               </div>
             )}
-          </Step>
+          </Fold>
 
-          {/* 5 */}
-          <Step
-            n={5}
-            title="It survives us"
-            status={s5}
-            lockNote="Build your file in step 1 first."
-            summary={
-              restored !== null ? (
-                <>{restored} {restored === 1 ? "fact" : "facts"} came back from Walrus.</>
-              ) : wiped !== null ? (
-                <span className="text-[var(--red)]">{wiped} facts wiped from this device. Restore them.</span>
-              ) : (
-                "Wipe this device, then bring the file back from Walrus."
-              )
-            }
-            onOpen={() => setActive(5)}
-          >
-            <p className="lede max-w-[58ch]">Your file does not live in our database. Wipe the copy on this device, then bring it back from Walrus.</p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <button className="btn btn-ghost" disabled={facts.length === 0 || restoreBusy} onClick={wipe}>
-                Wipe local copy
-              </button>
+          <Fold title="Restore from Walrus" hint={restored !== null ? `${restored} facts came back from Walrus.` : wiped !== null ? <span className="text-[var(--red)]">{wiped} facts wiped from this device. Restore them.</span> : "Wipe this device, then bring the file back. Nothing lives in our database."} open={open === "restore"} onToggle={() => toggle("restore")}>
+            <div className="flex flex-wrap items-center gap-4">
+              <button className="btn btn-ghost" disabled={facts.length === 0 || restoreBusy} onClick={wipe}>Wipe local copy</button>
               <span className="mono text-[var(--fg-3)]" aria-hidden>→</span>
-              <button className="btn btn-ice" disabled={restoreBusy || !ready} onClick={restore}>
-                {restoreBusy ? <Busy>Reading from Walrus</Busy> : "Restore from Walrus"}
-              </button>
+              <button className="btn btn-ice" disabled={restoreBusy || !ready} onClick={restore}>{restoreBusy ? <Busy>Reading from Walrus</Busy> : "Restore from Walrus"}</button>
             </div>
             {facts.length > 0 && facts.some((f) => !f.blobId) && wiped === null && (
               <p className="fine mt-3">{facts.filter((f) => !f.blobId).length} facts are not sealed yet. A wipe now would lose them for good.</p>
             )}
             <ErrorLine msg={restoreErr} />
-            <div className="mt-8 min-h-[40px]">
+            <div className="mt-6 min-h-[32px]">
               {wiped !== null && restored === null && !restoreBusy && (
-                <div className="slide-in">
-                  <p className="display text-[32px] sm:text-[44px]">
-                    <span className="text-[var(--red)]">{wiped} facts</span> gone from this device.
-                  </p>
-                  <p className="mt-2 text-[16px] text-[var(--fg-2)]">The file is empty here. It is still on Walrus.</p>
-                </div>
+                <p className="slide-in display text-[28px] sm:text-[36px]"><span className="text-[var(--red)]">{wiped} facts</span> gone from this device. Still on Walrus.</p>
               )}
-              {restoreBusy && <p className="text-[17px] text-[var(--fg-2)] scan inline-block pr-6">Downloading and decrypting your facts from Walrus</p>}
               {restored !== null && (
-                <div className="slide-in flex items-center gap-6">
-                  <FileSphere facts={facts} seals={seals} size={110} />
-                  <div>
-                    <p className="display text-[32px] sm:text-[44px]">
-                      <span className="text-[var(--ice)] tnum">{restored}</span> {restored === 1 ? "fact" : "facts"} came back.
-                    </p>
-                    <p className="mt-2 text-[16px] text-[var(--fg-2)]">Downloaded from Walrus, decrypted, back in your file.</p>
-                  </div>
-                </div>
+                <p className="slide-in display text-[28px] sm:text-[36px]"><span className="text-[var(--ice)] tnum">{restored}</span> {restored === 1 ? "fact" : "facts"} came back, decrypted.</p>
               )}
             </div>
-            {hasFacts && (
-              <div className="mt-8 lg:hidden">
-                {fileHead}
-                <div className="rule mt-4" />
-                {ledgerList}
-              </div>
-            )}
-          </Step>
+          </Fold>
 
-          {/* 6, optional */}
-          <Step
-            n={6}
-            title="Let an agent buy this pack"
-            status={s6}
-            lockNote="Needs a trip and at least one sealed fact."
-            summary={
-              agent ? (
-                <>Paid {agent.verified?.amountUsdc ?? "0.05"} USDC on Sui, {agent.verified?.ok ? "verified through Tatum" : "not yet confirmed by Tatum"}.</>
-              ) : (
-                "Optional. Prior's demo agent pays 0.05 USDC on Sui over MPP and gets a pack from this file."
-              )
-            }
-            onOpen={() => setActive(6)}
-          >
-            <p className="lede max-w-[58ch]">
-              Travel agents and booking bots can ask Prior for a pack. Prior&apos;s own demo agent calls the paid endpoint, pays in USDC on
-              Sui over MPP, and gets a pack built from this file. The payment is then read back from Sui through Tatum.
-            </p>
-            <button className="btn mt-8" disabled={agentBusy || !ready || !(pack || tripOk) || sealed === 0} onClick={agentBuy}>
+          <Fold title="Let an agent buy this" hint={agent ? <>Paid {agent.verified?.amountUsdc ?? "0.05"} USDC on Sui, {agent.verified?.ok ? "verified through Tatum" : "not yet confirmed by Tatum"}.</> : "Prior's demo agent pays 0.05 USDC on Sui over MPP and gets a pack from this file."} open={open === "agent"} onToggle={() => toggle("agent")}>
+            <button className="btn" disabled={agentBusy || !ready || sealed === 0} onClick={agentBuy}>
               {agentBusy ? <Busy>Agent paying on Sui</Busy> : "Run the agent purchase"}
             </button>
-            {sealed === 0 && <p className="fine mt-3">Needs at least one sealed fact and a trip.</p>}
+            {sealed === 0 && <p className="fine mt-3">Needs at least one sealed fact.</p>}
             <ErrorLine msg={agentErr} />
             {agent && (
-              <div className="slide-in mt-10">
+              <div className="slide-in mt-8">
                 {agent.verified?.ok ? (
-                  <p className="display text-[32px] sm:text-[44px]">
-                    <span className="text-[var(--ice)]">Paid {agent.verified.amountUsdc ?? "0.05"} USDC</span> on Sui, verified through Tatum.
-                  </p>
+                  <p className="display text-[28px] sm:text-[36px]"><span className="text-[var(--ice)]">Paid {agent.verified.amountUsdc ?? "0.05"} USDC</span> on Sui, verified through Tatum.</p>
                 ) : (
-                  <p className="text-[17px] text-[var(--red)]">
-                    Tatum has not confirmed this payment yet{agent.verified?.reason ? `: ${agent.verified.reason}` : ""}. Check the receipt.
-                  </p>
+                  <p className="text-[17px] text-[var(--red)]">Tatum has not confirmed this payment yet{agent.verified?.reason ? `: ${agent.verified.reason}` : ""}. Check the receipt.</p>
                 )}
-                <p className="mt-3 text-[16px] text-[var(--fg-2)]">
-                  The agent received a pack with {agent.pack?.answers?.length ?? 0} answers and {agent.pack?.checklist?.length ?? 0} documents.
-                </p>
+                <p className="mt-3 text-[16px] text-[var(--fg-2)]">The agent received a pack with {agent.pack?.answers?.length ?? 0} answers and {agent.pack?.checklist?.length ?? 0} documents.</p>
                 <Details label="Receipt on Sui">
                   <Row k="Receipt"><a className="link-u" href={suiTxUrl(agent.receiptTx)} target="_blank" rel="noreferrer">{agent.receiptTx}</a></Row>
                   {agent.payer && <Row k="Payer"><a className="link-u" href={suiAccountUrl(agent.payer)} target="_blank" rel="noreferrer">{short(agent.payer, 12, 8)}</a></Row>}
@@ -988,16 +764,36 @@ export default function Flow() {
                 </Details>
               </div>
             )}
-          </Step>
+          </Fold>
         </div>
+      </section>
 
-        {aside}
+      {/* 5 the file itself */}
+      <section className="mt-14">
+        <div className="rule-strong">
+          <Fold title={<>Your file · {facts.length} {facts.length === 1 ? "fact" : "facts"}</>} hint={<><span style={{ color: "var(--ice)" }}>{sealed} sealed on Walrus</span>{sealingCount > 0 ? `, ${sealingCount} sealing` : ""}. Each fact is one plain sentence, encrypted with Seal.</>} open={fileOpen} onToggle={() => setFileOpen((v) => !v)}>
+            {facts.length === 0 ? (
+              <p className="fine">Nothing on this device. Restore it from Walrus above.</p>
+            ) : (
+              <ol>
+                {facts.map((f, i) => (
+                  <FactRow key={f.id} fact={f} index={i} seal={seals[f.id]} fresh={fresh.has(f.id)} focused={focus?.id === f.id ? focus.n : undefined} onRetry={() => void sealOne(f)} delay={restored !== null ? i * 60 : 0} showIds={showIds} />
+                ))}
+              </ol>
+            )}
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 fine">
+              <button className="link-u cursor-pointer" onClick={() => setShowIds((v) => !v)}>{showIds ? "Hide Walrus ids" : "Show Walrus ids"}</button>
+              {showIds && <span className="mono text-[11px] break-id">File id {ns}. Keep it private.</span>}
+            </div>
+          </Fold>
+        </div>
+      </section>
+
+      <div className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2 fine">
+        <button className="link-u cursor-pointer" onClick={() => { setPack(null); setDoneAt(null); }}>Add more documents or change the trip</button>
+        <button className="link-u cursor-pointer" onClick={newFile}>Start over with an empty file</button>
+        <span>Guidance, not legal advice. See the onchain record on <Link className="link-u" href="/proof">the proof page</Link>.</span>
       </div>
-
-      <p className="fine mt-12">
-        Guidance, not legal advice. Prior drafts and cites; you review and file it yourself. See the onchain record on{" "}
-        <Link className="link-u" href="/proof">the proof page</Link>.
-      </p>
     </main>
   );
 }
