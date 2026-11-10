@@ -17,3 +17,6 @@ coverage/
 *.log
 .DS_Store
 /.next-api/
+
+.vercel
+.env*

@@ -43,7 +43,7 @@ const cases: Case[] = [
   { name: 'Three month gap between jobs', expect: 'clean', facts: [f('a', 'employment', { employer: 'A Ltd', start: '2018-01', end: '2019-01' }), f('b', 'employment', { employer: 'B Ltd', start: '2019-04' })] },
 ];
 
-const prefix: Record<Exclude<Kind, 'clean'>, string> = { emp_date: 'c_emp', undisclosed: 'c_undisclosed', overlap: 'c_overlap', gap: 'c_gap', trip_overlap: 'c_trip' };
+const prefix: Record<Kind, string> = { clean: "", emp_date: 'c_emp', undisclosed: 'c_undisclosed', overlap: 'c_overlap', gap: 'c_gap', trip_overlap: 'c_trip' };
 
 let caught = 0, planted = 0, falseAlarms = 0, clean = 0;
 const rows: string[] = [];

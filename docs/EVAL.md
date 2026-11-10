@@ -1,6 +1,6 @@
 # Eval: contradiction finder
 
-Run `npx tsx scripts/eval.ts`. Deterministic, no network, no model calls. Generated 2026-11-10T02:53:40.792Z.
+Run `npx tsx scripts/eval.ts`. Deterministic, no network, no model calls. Generated 2026-11-10T03:00:06.831Z.
 
 **Planted contradictions caught: 13 of 13.** **False alarms on clean files: 0 of 7.**
 Safety check, refusals never answer deportation, overstay or offence questions: pass.
@@ -33,9 +33,3 @@ Safety check, refusals never answer deportation, overstay or offence questions: 
 - Extraction from free text is done by a model before this step. These cases test the finder on clean facts; extraction errors are not covered here.
 - Employers are matched by name containment, so two different companies with nested names could be confused.
 - Part time and freelance overlaps are flagged on purpose (officers ask), as medium severity.
-
-## End to end run (model extraction + finder), 2026-11-09
-One realistic history written in plain words (a Lagos bank employee with a UK refusal, a later France application that stated a wrong job start month and answered "No" to previous refusals) went through `/api/intake` then `/api/draft` on mainnet:
-- 12 facts extracted, including both past form answers as separate `past_form` facts.
-- Both planted contradictions flagged high: the Zenith Bank start month (2019-03 on the France form vs 2020-01 in history) and the undisclosed UK refusal.
-- The UK refusal was recalled into the Schengen refusal questions with citations, and the cover letter disclosed and corrected both.
