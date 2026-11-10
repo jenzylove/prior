@@ -32,7 +32,8 @@ export async function GET() {
       readVia: 'Sui mainnet via Tatum GraphQL, Walrus Memory relayer',
       account,
       sharePolicyPackage: CHAIN.sharePackage,
-      memory: { files: files.length, memories: ns.reduce((s, n) => s + (n.memory_count ?? 0), 0), namespaces: ns.map(n => ({ name: n.name, count: n.memory_count })) },
+      // File ids are bearer secrets, so only counts are published, never names.
+      memory: { files: files.length, memories: ns.reduce((s, n) => s + (n.memory_count ?? 0), 0), perFile: files.map(n => n.memory_count ?? 0).sort((a, b) => b - a) },
       grants,
       payments,
     });

@@ -15,7 +15,7 @@ interface ProofFeed {
     version: number;
   };
   sharePolicyPackage: string;
-  memory: { files: number; memories: number; namespaces: { name: string; count: number }[] };
+  memory: { files: number; memories: number; perFile: number[] };
   grants: { digest: string; at: string; action: string }[];
   payments: { digest: string; at: string; usdc: number }[];
 }
@@ -119,9 +119,9 @@ export default function Proof() {
           <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 border-y border-[var(--rule-strong)]">
             {[
               [feed.memory.memories, "memories on Walrus"],
-              [feed.memory.files, "applicant files"],
+              [feed.memory.files, "files, including our own tests"],
               [feed.grants.length, "recent grant actions"],
-              [feed.payments.length, "recent agent payments"],
+              [feed.payments.length, "recent demo agent payments"],
             ].map(([n, l], i) => (
               <div key={i} className={`py-6 px-3 sm:px-5 ${i % 2 === 0 ? "border-r" : "sm:border-r"} ${i === 3 ? "!border-r-0" : ""} border-[var(--rule)] ${i < 2 ? "border-b sm:border-b-0" : ""}`}>
                 <div className="display text-[56px] sm:text-[72px] leading-none">{n as number}</div>
@@ -188,15 +188,15 @@ export default function Proof() {
             )}
           </Block>
 
-          <Block n="B.4" title="Memory by file" note="Namespaces on the Walrus Memory relayer and how many sealed memories each holds.">
-            {feed.memory.namespaces.length === 0 ? (
-              <p className="fine">No namespaces returned.</p>
+          <Block n="B.4" title="Memory by file" note="Sealed memories per file. File ids are private, so only the counts are shown.">
+            {feed.memory.perFile.length === 0 ? (
+              <p className="fine">No files yet.</p>
             ) : (
               <ul className="border-t border-[var(--rule)] columns-1 sm:columns-2 gap-10">
-                {feed.memory.namespaces.map((n) => (
-                  <li key={n.name} className="break-inside-avoid py-2 border-b border-[var(--rule)] flex justify-between gap-4 mono text-[13px]">
-                    <span className="min-w-0 break-id">{n.name}</span>
-                    <span className="text-[var(--ink-2)] tabular-nums">{n.count}</span>
+                {feed.memory.perFile.map((count, i) => (
+                  <li key={i} className="break-inside-avoid py-2 border-b border-[var(--rule)] flex justify-between gap-4 mono text-[13px]">
+                    <span className="min-w-0 break-id">File {i + 1}</span>
+                    <span className="text-[var(--ink-2)] tabular-nums">{count}</span>
                   </li>
                 ))}
               </ul>

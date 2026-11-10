@@ -6,7 +6,7 @@ const SOURCES = {
   mappr: "https://www.mappr.co/?p=72448",
   africanews: "https://www.africanews.com/2025/05/26/visa-denied-african-travellers-hit-hard-by-soaring-schengen-rejections/",
   lawyer: "https://thenigerialawyer.com/1-34m-nigerian-visa-applications-rejected-uk-refusals-hit-21-year-high-as-nigeria-ranks-second-globally/",
-  guardian: "https://guardian.ng/?p=2601162",
+  guardian: "https://krdo.com/news/2025/05/21/africans-lost-nearly-70m-to-denied-visas-applications-to-europe-in-2024/",
 };
 
 function Src({ href, children }: { href: string; children: React.ReactNode }) {
@@ -58,7 +58,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "Who can read my history?",
-    a: "Your facts are stored on Walrus as Seal ciphertext. To build a search vector, the memory relayer sees the text briefly, and the drafting model sees your history to write answers. Neither keeps it. Nobody can browse your file.",
+    a: "Your facts are stored on Walrus as Seal ciphertext. To build a search vector, the memory relayer sees the text briefly, and the drafting model sees your history to write answers. Neither is used to store it. Your file has a long random id that only your browser holds, and the public proof page shows counts, never file ids. Prior runs the account that holds demo files, so Prior can decrypt them; that is why the file id stays private.",
   },
   {
     q: "Why does a refusal letter matter so much?",
@@ -161,7 +161,6 @@ export default function Home() {
               </p>
               <div className="mt-3 flex gap-3 flex-wrap">
                 <Src href={SOURCES.mappr}>Mappr, from European Commission data</Src>
-                <Src href={SOURCES.africanews}>Africanews</Src>
               </div>
             </div>
             <div className="py-7 md:px-8 border-b md:border-b-0 md:border-r border-[var(--rule)]">
@@ -180,7 +179,7 @@ export default function Home() {
                 refunded.
               </p>
               <div className="mt-3">
-                <Src href={SOURCES.guardian}>The Guardian Nigeria</Src>
+                <Src href={SOURCES.guardian}>CNN, LAGO Collective data</Src>
               </div>
             </div>
           </div>
@@ -299,7 +298,7 @@ export default function Home() {
       <Section n="03" kicker="Privacy" title="What is stored, who sees what, and what we cannot promise.">
         <dl className="grid md:grid-cols-2 gap-x-12 border-t border-[var(--rule-strong)]">
           {[
-            ["Stored", "Your facts are stored on Walrus as Seal ciphertext. The file on Walrus is unreadable without a key the policy allows."],
+            ["Stored", "Your facts are stored on Walrus as Seal ciphertext. Only a key registered on the Walrus Memory account can decrypt them. For demo files that key is Prior's own, so keep your file id private."],
             ["Seen briefly", "The memory relayer sees the text for a moment to make a search vector. The drafting model sees your history to write answers. Neither stores it."],
             ["Where files live", "Demo files sit under Prior's Walrus Memory account on Sui mainnet. Each file is its own namespace, so yours never mixes with anyone else's."],
             ["Consultant access", "Ends on the Sui clock for new reads. Anything a consultant already opened stays opened. That is how encryption works everywhere, and we say it plainly."],
@@ -344,7 +343,7 @@ GET /api/agent/pack   (with receipt)
       </Section>
 
       {/* ── 05 Proof ───────────────────────────────────────────── */}
-      <Section n="05" kicker="Proof" title="Every claim on this page has a record on Sui mainnet.">
+      <Section n="05" kicker="Proof" title="Every claim about the product has a record on Sui mainnet.">
         <div className="grid gap-8 md:grid-cols-[1fr_auto] items-end">
           <p className="text-[18px] text-[var(--ink-2)] max-w-[56ch]">
             The proof page reads live from Sui mainnet through Tatum: the Walrus Memory account and its delegate keys,

@@ -4,6 +4,7 @@ import { MemWalManual } from '@mysten-incubation/memwal/manual';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import type { Fact } from '@/lib/core/types';
 import { CHAIN, env } from './env';
+import { BadRequest } from './http';
 
 const PREFIX = 'PRIOR_FACT v1 ';
 let relay: MemWal | null = null;
@@ -35,13 +36,13 @@ function manualClient(): MemWalManual {
 }
 
 export function assertNamespace(ns: unknown): string {
-  if (typeof ns !== 'string' || !/^file-[a-z0-9]{6,24}$/.test(ns)) throw new Error('Invalid file id');
+  if (typeof ns !== 'string' || !/^file-[a-z0-9]{6,40}$/.test(ns)) throw new BadRequest('Invalid file id');
   return ns;
 }
 
 /** Seal encrypt one fact on our side and store the ciphertext on Walrus mainnet. */
 export async function sealFact(ns: string, fact: Fact): Promise<{ blobId: string; sealedAt: string }> {
-  const { blobId: _b, sealedAt: _s, ...clean } = fact;
+  const clean = { id: fact.id, kind: fact.kind, text: fact.text, fields: fact.fields, source: fact.source };
   const res = await manualClient().rememberManual(PREFIX + JSON.stringify(clean), ns);
   return { blobId: res.blob_id, sealedAt: new Date().toISOString() };
 }

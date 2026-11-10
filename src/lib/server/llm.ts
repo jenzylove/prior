@@ -18,7 +18,6 @@ async function complete(system: string, user: string, maxTokens: number): Promis
   console.log(`[llm] ${MODEL} in=${res.usage.input_tokens} out=${res.usage.output_tokens} cache_read=${res.usage.cache_read_input_tokens ?? 0} stop=${res.stop_reason} blocks=${res.content.map(c => c.type).join(',')}`);
   const out = res.content.map(c => (c.type === 'text' ? c.text : '')).join('');
   if (res.stop_reason === 'max_tokens') {
-    console.log('[llm] cut off. head:', out.slice(0, 600), ' ... tail:', out.slice(-300));
     throw new Error('The model ran out of room on this one. Try a shorter input.');
   }
   return out;

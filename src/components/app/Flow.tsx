@@ -31,7 +31,7 @@ function save(key: string, v: unknown) {
 }
 function newNamespace() {
   const abc = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const r = crypto.getRandomValues(new Uint8Array(10));
+  const r = crypto.getRandomValues(new Uint8Array(28));
   return "file-" + Array.from(r, (b) => abc[b % abc.length]).join("");
 }
 function mergeFacts(prev: Fact[], add: Fact[]) {
@@ -48,6 +48,7 @@ interface ShareState {
   link: string;
   createdAt: number;
   revokeTx?: string;
+  revokeToken?: string;
 }
 interface GrantState {
   id: string;
@@ -127,7 +128,7 @@ export default function Flow() {
 
   useEffect(() => {
     let id = load<string>(K.ns);
-    if (!id || !/^file-[a-z0-9]{6,24}$/.test(id)) {
+    if (!id || !/^file-[a-z0-9]{6,40}$/.test(id)) {
       id = newNamespace();
       save(K.ns, id);
     }
@@ -304,7 +305,7 @@ export default function Flow() {
     if (!share) return;
     setShareErr(null);
     setRevokeBusy(true);
-    const r = await api<{ txDigest: string }>("/api/share/revoke", { grantId: share.grantId });
+    const r = await api<{ txDigest: string }>("/api/share/revoke", { grantId: share.grantId, token: share.revokeToken });
     setRevokeBusy(false);
     if (!r.ok) return setShareErr(r.error);
     setShare({ ...share, revokeTx: r.data.txDigest });
@@ -725,11 +726,11 @@ export default function Flow() {
                 <input
                   type="number"
                   min={1}
-                  max={1440}
+                  max={60}
                   aria-label="Minutes"
                   className="field !w-[84px] ml-2 text-center"
                   value={minutes}
-                  onChange={(e) => setMinutes(Math.max(1, Math.min(1440, Number(e.target.value) || 1)))}
+                  onChange={(e) => setMinutes(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
                 />
                 <span className="label ml-1">min</span>
               </div>

@@ -3,7 +3,7 @@ import { demoAgent } from '@/lib/server/pay';
 import { verifyUsdcPayment } from '@/lib/server/tatum';
 import { assertNamespace } from '@/lib/server/memwal';
 import { env } from '@/lib/server/env';
-import { fail, limit } from '@/lib/server/http';
+import { BadRequest, fail, limit, readJson } from '@/lib/server/http';
 import type { Trip } from '@/lib/core/types';
 
 export const runtime = 'nodejs';
@@ -14,7 +14,8 @@ export async function POST(req: Request) {
   const blocked = limit(req, 'agent-buy', 3, 24 * 60 * 60 * 1000);
   if (blocked) return blocked;
   try {
-    const { ns, trip } = (await req.json()) as { ns: string; trip: Trip };
+    const { ns, trip } = await readJson<{ ns: string; trip: Trip }>(req, 2_000);
+    if (!trip?.form || !trip.destination || !trip.start || !trip.end) throw new BadRequest('Draft a trip first.');
     assertNamespace(ns);
     const q = new URLSearchParams({ ns, form: trip.form, destination: trip.destination, purpose: trip.purpose, start: trip.start, end: trip.end });
     const url = `${new URL(req.url).origin}/api/agent/pack?${q}`;

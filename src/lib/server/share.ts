@@ -4,7 +4,7 @@ import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import type { Pack } from '@/lib/core/types';
 import { CHAIN, env } from './env';
 import { WalrusClient } from '@mysten/walrus';
@@ -18,6 +18,9 @@ const walrus = () => (wal ??= new WalrusClient({
   uploadRelay: { host: 'https://upload-relay.mainnet.walrus.space', sendTip: { max: 5_000_000 } },
 } as never));
 export const serverSigner = () => Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(env.serverSuiKey()).secretKey);
+
+/** Only the applicant who created a share gets this token, so a consultant holding the link cannot revoke it. */
+export const revokeToken = (grantId: string) => createHmac('sha256', env.mppSecret()).update(`revoke:${grantId}`).digest('hex');
 
 type ExecResult = { Transaction?: { digest: string; effects?: { changedObjects?: { objectId: string; idOperation?: string }[]; status?: { success?: boolean } }; objectTypes?: Record<string, string> }; digest?: string };
 

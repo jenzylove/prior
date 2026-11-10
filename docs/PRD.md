@@ -67,7 +67,7 @@ Who hits it: anyone who applies for visas more than once, worst for applicants f
 
 | Claim | Proof |
 |---|---|
-| Your history is encrypted before it leaves your device | Network tab shows ciphertext; code path in repo; Seal key IDs shown |
+| Your history is encrypted with Seal before it is stored on Walrus | Downloaded blobs are ciphertext only; code path in repo |
 | Every answer is traceable to your own record | Each answer links to a memory ID that resolves on Walrus |
 | It catches contradictions with past filings | Eval on planted contradictions, catch rate and misses published |
 | A refusal changes the next application | Before and after pack diff in the demo, citing the lesson memory |

@@ -14,7 +14,7 @@ export const env = {
   anthropicKey: () => need('ANTHROPIC_API_KEY'),
   serverSuiKey: () => need('SERVER_SUI_PRIVATE_KEY'),
   serverAddress: () => need('SERVER_SUI_ADDRESS'),
-  mppSecret: () => process.env.MPP_SECRET_KEY || need('MEMWAL_KEY').slice(0, 32),
+  mppSecret: () => need('MPP_SECRET_KEY'),
 };
 
 export const CHAIN = {

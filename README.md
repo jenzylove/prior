@@ -70,8 +70,8 @@ flowchart LR
 | Contradiction finder | Real, deterministic, 13 of 13 planted contradictions caught, 0 of 7 false alarms (`docs/EVAL.md`) |
 | Form question sets | Schengen fields follow the EU harmonised form. UK Visitor and DS 160 are paraphrased from the public sections; the exact wording on those sites is not published or was not reachable |
 | Consultant expiry | Real Seal policy on Sui mainnet, verified in a browser: decrypts before, key servers answer 403 after |
-| Agent payments | Real MPP payments in USDC on Sui mainnet, for example [`GyQDgdTk…`](https://suivision.xyz/txblock/GyQDgdTkxVwoWwV17ezoDRkZ5eJ4ywqXhvLNXiEQGbX4) |
-| Demo files | Live under Prior's own Walrus Memory account, one namespace per visitor. In a personal setup the account is your own wallet |
+| Agent payments | Real MPP payments in USDC on Sui mainnet, verified by the MPP method and again through Tatum before any work is done. The demo agent on the site is Prior's own wallet paying the owner wallet, for example [`GyQDgdTk…`](https://suivision.xyz/txblock/GyQDgdTkxVwoWwV17ezoDRkZ5eJ4ywqXhvLNXiEQGbX4) |
+| Demo files | Live under Prior's own Walrus Memory account, one namespace per visitor with a long random file id that only your browser holds. Prior runs that account, so Prior can decrypt demo files; the public proof page shows counts, never file ids. In a personal setup the account is your own wallet |
 | Legal advice | No. Prior drafts and checks. It does not submit anything anywhere |
 
 ## Track by track
@@ -106,7 +106,7 @@ npm test                      # 27 tests
 npx tsx scripts/eval.ts       # contradiction eval
 ```
 
-Use the file from Claude Code:
+Use a file from Claude Code (needs the delegate key of the Walrus Memory account that holds the file, so for demo files that is the operator; in your own setup it is your key):
 
 ```bash
 claude mcp add prior -e MEMWAL_KEY=<delegate key> -e MEMWAL_ACCOUNT_ID=<account id> -e PRIOR_FILE=<file id> -- node mcp/server.mjs
@@ -116,6 +116,7 @@ claude mcp add prior -e MEMWAL_KEY=<delegate key> -e MEMWAL_ACCOUNT_ID=<account 
 
 - Revoking or expiring consultant access stops new reads. It cannot make anyone unsee a page they already opened.
 - The relayer sees text for a moment to make the search vector, and the drafting model sees the history to write answers. Neither stores it. Walrus stores ciphertext only.
-- Rate limits are per server instance.
+- Rate limits are per server instance, with a global cap per route.
+- Revoking a share needs the token returned to the applicant who created it.
 
 MIT licensed.
