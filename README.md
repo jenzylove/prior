@@ -7,12 +7,12 @@
 <p align="center"><b>The officer remembers your priors. Now you do too.</b></p>
 
 <p align="center">
-  <a href="https://prior-pi.vercel.app"><img alt="Live" src="https://img.shields.io/badge/live-prior--pi.vercel.app-1d2a44"></a>
+  <a href="https://prior.jdollar.site"><img alt="Live" src="https://img.shields.io/badge/live-prior.jdollar.site-1d2a44"></a>
   <img alt="Walrus Memory" src="https://img.shields.io/badge/Walrus%20Memory-mainnet-2ccd9a">
   <img alt="Seal" src="https://img.shields.io/badge/Seal-encrypted-b3261e">
   <img alt="Tatum" src="https://img.shields.io/badge/Tatum-Sui%20GraphQL-4f37fd">
   <img alt="MPP" src="https://img.shields.io/badge/MPP-USDC%20on%20Sui-1d2a44">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-27%20passing-2ccd9a">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-29%20passing-2ccd9a">
 </p>
 
 <p align="center"><img src="docs/assets/hero.png" alt="Prior landing page" width="900" /></p>
@@ -26,16 +26,16 @@ Prior is a visa agent that remembers every application you have ever filed: the 
 - A false "No" about a past refusal on a US visa form can be treated as misrepresentation, a permanent bar ([Nolo](https://www.alllaw.com/articles/nolo/us-immigration/visa-green-card-denied-false-information-forms.html)).
 - Officers cross check a new application against previous applications, travel history and employment dates ([Ahluwalia Law](https://www.ahluwalialaw.com/ai-visa-screening-consular-adjudication-2026/)). One mismatch reads as a credibility problem, and a refusal you forgot to disclose can be treated as deception.
 
-## Judge fast path (five minutes, no keys)
+## Judge fast path (one click, no keys)
 
-1. Open **[prior-pi.vercel.app/app](https://prior-pi.vercel.app/app)**.
-2. **Your history:** paste a few lines about your own jobs, trips and any past visa application, in plain words. Include one thing you once wrote differently on a form if you can ("On my 2024 France form I wrote that I started at X in 2019"). Press **Build my file**.
-3. Watch each fact get **sealed on Walrus**: it is encrypted with Seal, stored on Walrus mainnet, and shows its blob id. Click one to open it on Walruscan.
-4. **Your trip:** pick Schengen, UK Visitor or US DS 160 and a destination. Prior drafts every answer it can prove, each one citing the memory it came from. Contradictions with your earlier forms appear in red, with the fix.
-5. **Got refused before?** Paste any refusal letter. Each reason becomes a lesson in your file, the pack is redrafted, and the before and after shows exactly what the refusal taught it.
-6. **Share with a consultant:** pick a few minutes, open the link in another window, and watch access end on the Sui clock. The Seal key servers refuse the read after that.
-7. **Survives us:** wipe the local index and restore the whole file from Walrus.
-8. Open **[/proof](https://prior-pi.vercel.app/proof)**: every memory count, grant and payment, read live from Sui mainnet through Tatum.
+1. Open **[prior.jdollar.site/app](https://prior.jdollar.site/app)** and press **Try Maya's documents**. (Or drop your own CV, an old visa form and a refusal letter, PDF or text, and pick where you are going next.)
+2. In about 20 seconds: **what an officer would catch**, in red, each with its fix. Maya's France form said she was never refused, after the UK refused her, and gave a different job start date.
+3. **What your refusal taught it:** each reason in the refusal letter is now a lesson, with the documents to bring.
+4. **Your application, drafted:** open the answers; each one cites the fact it came from. The cover letter discloses the refusal and corrects the earlier form.
+5. **Your file:** every fact is sealed with Seal on Walrus mainnet; show the ids and open one on Walruscan.
+6. **Share with a consultant** for a minute and open the link: it decrypts, then the Seal key servers refuse it once the Sui clock passes the deadline.
+7. **Restore from Walrus** after wiping the local copy, and **let an agent buy this** (0.05 USDC on Sui over MPP, checked through Tatum).
+8. **[/proof](https://prior.jdollar.site/proof):** memory counts, grants and payments read live from Sui mainnet through Tatum.
 
 ## How it works
 
@@ -91,7 +91,7 @@ A refused Schengen application loses a EUR 90 fee and months of planning. A Prio
 
 ## Proof
 
-- Live feed: [prior-pi.vercel.app/proof](https://prior-pi.vercel.app/proof) (Sui mainnet via Tatum GraphQL, Walrus Memory relayer)
+- Live feed: [prior-pi.vercel.app/proof](https://prior.jdollar.site/proof) (Sui mainnet via Tatum GraphQL, Walrus Memory relayer)
 - Walrus Memory account: `0x3ffa0d1cde15d3b203c1c0b838022c3b7aa30edcdc58411ca53d1501712805aa`
 - Share policy package (immutable): [`0x38ac8750…f81b`](https://suivision.xyz/package/0x38ac8750c7a00c9b4fba9a5bd86320ec67590da579a859b85eb69f5571b4f81b)
 - Spikes with outputs: [`docs/spikes`](docs/spikes)
@@ -103,7 +103,7 @@ A refused Schengen application loses a EUR 90 fee and months of planning. A Prio
 npm install
 cp .env.example .env.local   # Tatum key, Walrus Memory account + delegate key, Anthropic key, server wallet
 npm run dev
-npm test                      # 27 tests
+npm test                      # 29 tests
 npx tsx scripts/eval.ts       # contradiction eval
 ```
 
